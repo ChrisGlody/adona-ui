@@ -35,7 +35,7 @@ Adona UI is a modern, feature-rich dashboard built with Next.js that provides to
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/ChrisGlody/adona-ui
 cd adona-ui
 ```
 
