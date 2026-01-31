@@ -2,14 +2,16 @@ import React from "react"
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { ThemeProvider } from '@/components/theme-provider'
+import { AmplifyProvider } from '@/components/amplify-provider'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Observability & Reliability Dashboard',
-  description: 'Monitor runs, analyze metrics, and manage incidents',
+  title: 'Adona — Observability & Reliability Dashboard',
+  description: 'Adona UI: monitor runs, analyze metrics, and manage incidents',
   generator: 'v0.app',
   icons: {
     icon: [
@@ -36,10 +38,14 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans antialiased`}>
-        {children}
-        <Analytics />
+    <html lang="en" suppressHydrationWarning>
+      <body className="min-h-screen font-sans antialiased bg-background text-foreground">
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <AmplifyProvider>
+            {children}
+            <Analytics />
+          </AmplifyProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

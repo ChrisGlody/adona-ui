@@ -5,10 +5,15 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "dev:sst": "sst dev",
+    "deploy": "sst deploy",
     "lint": "eslint .",
     "start": "next start"
   },
   "dependencies": {
+    "@ai-sdk/openai": "2.0.0-beta.11",
+    "@ai-sdk/react": "2.0.0-beta.24",
+    "@neondatabase/serverless": "^1.0.2",
     "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "1.2.2",
     "@radix-ui/react-alert-dialog": "1.1.4",
@@ -58,9 +63,22 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
-    "zod": "3.25.76"
+    "zod": "3.25.76",
+    "ai": "5.0.0-beta.24",
+    "drizzle-orm": "^0.44.5",
+    "uuid": "^9.0.1",
+    "openai": "^4.28.0",
+    "vm2": "^3.9.19",
+    "reactflow": "^11.10.4",
+    "@monaco-editor/react": "^4.6.0",
+    "@rjsf/core": "^5.20.0",
+    "@rjsf/validator-ajv8": "^5.20.0",
+    "aws-amplify": "^6.10.0",
+    "jose": "^5.9.6",
+    "sst": "3.17.14"
   },
   "devDependencies": {
+    "@types/uuid": "^9.0.8",
     "@tailwindcss/postcss": "^4.1.9",
     "@types/node": "^22",
     "@types/react": "^19",

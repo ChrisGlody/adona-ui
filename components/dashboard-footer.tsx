@@ -7,7 +7,7 @@ export function DashboardFooter() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Home className="h-4 w-4" />
-            <span className="font-semibold">YourCompany</span>
+            <span className="font-semibold">Adona</span>
           </div>
           <span className="text-primary-foreground/60">|</span>
           <nav className="flex items-center gap-4 text-sm text-primary-foreground/80">
@@ -22,7 +22,7 @@ export function DashboardFooter() {
         </div>
         <div className="flex items-center gap-2 text-primary-foreground/80">
           <Sparkles className="h-4 w-4" />
-          <span className="font-medium">YourCompany</span>
+          <span className="font-medium">Adona</span>
         </div>
       </div>
     </footer>
