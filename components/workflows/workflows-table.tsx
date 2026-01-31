@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 type WorkflowRow = {
   id: string;
@@ -64,8 +65,10 @@ export function WorkflowsTable() {
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden p-6">
-        <div className="text-muted-foreground">Loading workflows…</div>
+      <div className="rounded-xl border border-border bg-card shadow-lg overflow-hidden p-12">
+        <div className="flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading workflows..." />
+        </div>
       </div>
     );
   }

@@ -6,6 +6,7 @@ import { MainNav } from "@/components/main-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface Tool {
   id: string;
@@ -175,7 +176,9 @@ export default function ToolsPage() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <MainNav />
-        <div className="p-6">Loading…</div>
+        <div className="flex-1 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading tools..." />
+        </div>
       </div>
     );
   }

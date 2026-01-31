@@ -10,6 +10,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface NavigationCard {
   title: string;
@@ -57,7 +58,9 @@ export default function LinksPage() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <MainNav />
-        <div className="p-6">Loading…</div>
+        <div className="flex-1 flex items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
       </div>
     );
   }

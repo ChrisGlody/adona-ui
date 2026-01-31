@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, GitBranch, Play } from "lucide-react";
+import { ArrowLeft, GitBranch, Play, Sparkles } from "lucide-react";
 import { MainNav } from "@/components/main-nav";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import ReactFlow, {
   Background,
   Controls,
@@ -64,6 +65,8 @@ export default function EditWorkflowPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tools, setTools] = useState<{ id: string; name: string; description?: string | null; inputSchema?: { properties?: Record<string, unknown> } }[]>([]);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -204,11 +207,62 @@ export default function EditWorkflowPage() {
     setSelectedNode(null);
   }
 
+  async function generateFromAI() {
+    if (!aiPrompt.trim() || !wf) return;
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/ai/workflows/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Generation failed: ${data.error || "Unknown error"}`);
+        return;
+      }
+      const generated = data.workflow;
+      // Update workflow with generated data
+      setWf({
+        ...wf,
+        name: generated.name || wf.name,
+        description: generated.description || wf.description,
+        inputSchema: generated.inputSchema || wf.inputSchema,
+        outputSchema: generated.outputSchema || wf.outputSchema,
+        definition: generated.definition,
+      });
+      // Update ReactFlow nodes
+      setNodes(
+        (generated.definition?.nodes || []).map((n: NodeDef) => ({
+          id: n.id,
+          data: { label: n.name || n.id },
+          position: { x: n.x ?? 100, y: n.y ?? 100 },
+        }))
+      );
+      // Update ReactFlow edges
+      setEdges(
+        (generated.definition?.edges || []).map((e: EdgeDef) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+        }))
+      );
+      setAiPrompt("");
+      setSelectedNode(null);
+    } catch (error) {
+      alert(`Generation failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <MainNav />
-        <div className="p-6">Loading…</div>
+        <div className="flex-1 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading workflow..." />
+        </div>
       </div>
     );
   }
@@ -274,6 +328,39 @@ export default function EditWorkflowPage() {
           <div className="flex-1 grid grid-cols-12 gap-4 p-4 min-h-0">
             {/* Left panel */}
             <div className="col-span-4 flex flex-col gap-4 overflow-y-auto">
+              <Card className="p-3 space-y-3 bg-card border-border">
+                <div className="font-medium text-foreground flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  AI Workflow Generator
+                </div>
+                <div className="space-y-2">
+                  <Textarea
+                    className="min-h-[80px] bg-background border-border text-foreground text-sm"
+                    placeholder="Describe the workflow you want to create...&#10;&#10;Example: Create a workflow that fetches user data from an API, processes it to extract emails, and saves the results to a database."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    disabled={generating}
+                  />
+                  <Button
+                    className="w-full"
+                    onClick={generateFromAI}
+                    disabled={generating || !aiPrompt.trim()}
+                  >
+                    {generating ? (
+                      <>
+                        <LoadingSpinner size="sm" className="mr-2" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Generate Workflow
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </Card>
+
               <Card className="p-3 space-y-2 bg-card border-border">
                 <div className="font-medium text-foreground">Palette</div>
                 <div className="flex flex-wrap gap-2">

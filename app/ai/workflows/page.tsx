@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MainNav } from "@/components/main-nav";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 interface Workflow {
   id: string;
@@ -88,7 +89,9 @@ export default function AIWorkflowsPage() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <MainNav />
-        <div className="p-6 text-center text-muted-foreground">Loading AI workflows...</div>
+        <div className="flex-1 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading AI workflows..." />
+        </div>
       </div>
     );
   }

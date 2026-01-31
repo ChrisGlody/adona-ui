@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import type { SearchResult } from "./types";
 
 export default function HybridSearchPage() {
@@ -163,7 +164,9 @@ export default function HybridSearchPage() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <MainNav />
-        <div className="p-6">Loading…</div>
+        <div className="flex-1 flex items-center justify-center">
+          <LoadingSpinner size="lg" text="Loading..." />
+        </div>
       </div>
     );
   }
