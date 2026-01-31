@@ -1,6 +1,7 @@
 import { Mem0Memory } from "../memory/mem0";
 import { getUserTool } from "../db/queries";
 import * as vm from "vm";
+import OpenAI from "openai";
 
 export interface StepExecutionContext {
   workflowInput: unknown;
@@ -12,7 +13,7 @@ export interface StepExecutionContext {
 export interface WorkflowStep {
   id: string;
   name: string;
-  type: "tool" | "inline" | "memory";
+  type: "tool" | "inline" | "memory" | "llm";
   description?: string;
   inputSchema?: unknown;
   outputSchema?: unknown;
@@ -22,6 +23,12 @@ export interface WorkflowStep {
   queryExpression?: string;
   memoryIdExpression?: string; // Expression to get memory ID for update/delete/get operations
   inputMapping?: string;
+  // LLM step fields
+  model?: string; // e.g., "gpt-4o", "gpt-4o-mini"
+  systemPrompt?: string; // System prompt for the LLM
+  userPromptExpression?: string; // Expression to build the user prompt from input/context
+  temperature?: number; // 0-2, default 0.7
+  maxTokens?: number; // Max tokens for response
 }
 
 export async function executeStep(
@@ -42,6 +49,9 @@ export async function executeStep(
         break;
       case "memory":
         result = await executeMemoryStep(stepDef, input, context);
+        break;
+      case "llm":
+        result = await executeLlmStep(stepDef, input, context);
         break;
       default:
         throw new Error(`Unsupported step type: ${stepDef.type}`);
@@ -234,5 +244,87 @@ async function executeMemoryStep(
 
     default:
       throw new Error(`Unsupported memory operation: ${stepDef.operation}`);
+  }
+}
+
+async function executeLlmStep(
+  stepDef: WorkflowStep,
+  input: unknown,
+  context: StepExecutionContext
+): Promise<unknown> {
+  const openai = new OpenAI();
+
+  // Build context for expression evaluation
+  const contextForEval = {
+    workflowInput: context.workflowInput,
+    stepOutputs: context.stepOutputs,
+    input,
+  };
+
+  // Helper to evaluate expressions
+  const evalExpression = (expr: string | undefined) => {
+    if (!expr) return undefined;
+    const fn = new Function(
+      "input",
+      "workflowInput",
+      "stepOutputs",
+      "context",
+      `return (${expr});`
+    );
+    return fn(
+      contextForEval.input,
+      contextForEval.workflowInput,
+      contextForEval.stepOutputs,
+      contextForEval
+    );
+  };
+
+  // Get user prompt from expression or use default
+  let userPrompt: string;
+  if (stepDef.userPromptExpression) {
+    const evaluated = evalExpression(stepDef.userPromptExpression);
+    userPrompt = typeof evaluated === "string" ? evaluated : JSON.stringify(evaluated, null, 2);
+  } else {
+    // Default: stringify the input
+    userPrompt = typeof input === "string" ? input : JSON.stringify(input, null, 2);
+  }
+
+  const model = stepDef.model || "gpt-4o-mini";
+  const systemPrompt = stepDef.systemPrompt || "You are a helpful assistant.";
+  const temperature = stepDef.temperature ?? 0.7;
+  const maxTokens = stepDef.maxTokens || 1000;
+
+  console.log(`[LLM Step] Model: ${model}, User prompt: ${userPrompt.substring(0, 100)}...`);
+
+  try {
+    const response = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature,
+      max_tokens: maxTokens,
+    });
+
+    const content = response.choices[0]?.message?.content || "";
+    const usage = response.usage;
+
+    console.log(`[LLM Step] Response received, tokens used: ${usage?.total_tokens}`);
+
+    return {
+      response: content,
+      model,
+      usage: {
+        promptTokens: usage?.prompt_tokens,
+        completionTokens: usage?.completion_tokens,
+        totalTokens: usage?.total_tokens,
+      },
+    };
+  } catch (error) {
+    console.error("[LLM Step] Error:", error);
+    throw new Error(
+      `LLM call failed: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }

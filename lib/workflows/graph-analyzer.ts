@@ -1,7 +1,7 @@
 export interface WorkflowStep {
   id: string;
   name: string;
-  type: "tool" | "inline" | "memory";
+  type: "tool" | "inline" | "memory" | "llm";
   description?: string;
   inputSchema?: unknown;
   outputSchema?: unknown;
@@ -11,6 +11,12 @@ export interface WorkflowStep {
   queryExpression?: string;
   memoryIdExpression?: string;
   inputMapping?: string;
+  // LLM step fields
+  model?: string;
+  systemPrompt?: string;
+  userPromptExpression?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 export interface WorkflowEdge {

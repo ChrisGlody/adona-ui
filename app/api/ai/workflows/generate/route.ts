@@ -8,7 +8,7 @@ const openai = new OpenAI();
 interface GeneratedNode {
   id: string;
   name: string;
-  type: "tool" | "inline" | "memory";
+  type: "tool" | "inline" | "memory" | "llm";
   description?: string;
   toolId?: string;
   code?: string;
@@ -18,6 +18,12 @@ interface GeneratedNode {
   inputMapping?: string;
   x?: number;
   y?: number;
+  // LLM fields
+  model?: string;
+  systemPrompt?: string;
+  userPromptExpression?: string;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 interface GeneratedEdge {
@@ -101,7 +107,14 @@ ${existingWorkflowContext}
 You can create workflows with the following step types:
 1. "tool" - Uses a registered tool (requires toolId from available tools)
 2. "inline" - Custom JavaScript/TypeScript code with signature: export async function main(input, context) { return result; }. Use fetch() for HTTP requests.
-3. "memory" - Semantic memory operations. Supported operations:
+3. "llm" - Call an LLM (OpenAI) with a prompt. Fields:
+   - model: "gpt-4o-mini" (default, fast/cheap), "gpt-4o" (powerful), "gpt-4-turbo", "gpt-3.5-turbo"
+   - systemPrompt: System instructions for the LLM
+   - userPromptExpression: JS expression to build user prompt from input/context (e.g., "input.query" or "\`Summarize: \${input.text}\`")
+   - temperature: 0-2 (default 0.7)
+   - maxTokens: max response tokens (default 1000)
+   - Returns: { response: string, model: string, usage: { promptTokens, completionTokens, totalTokens } }
+4. "memory" - Semantic memory operations. Supported operations:
    - "search": Search memories by query (requires queryExpression). Returns: { operation: "search", query: string, results: Array<{id, content}> }
    - "add": Add new memory content (requires queryExpression with content). Returns: { operation: "add", content: string, success: true }
    - "update": Update existing memory (requires memoryIdExpression and queryExpression with new content)
@@ -141,6 +154,18 @@ ENVIRONMENT VARIABLES:
 - For URLs, use JavaScript template literals: const url = \`\${context.env.BASE_URL}/endpoint?key=\${context.env.API_KEY}\`;
 - DO NOT use {{variable}} syntax - use JavaScript backtick template literals with \${variable}
 
+LLM NODE EXAMPLE:
+{
+  "id": "step_2",
+  "name": "Generate Response",
+  "type": "llm",
+  "model": "gpt-4o-mini",
+  "systemPrompt": "You are a helpful assistant. Answer questions based on the provided context.",
+  "userPromptExpression": "\`Context: \${JSON.stringify(input.results)}\\n\\nQuestion: \${context.workflowInput.query}\`",
+  "temperature": 0.7,
+  "maxTokens": 1000
+}
+
 Guidelines:
 - Create meaningful step names that describe what each step does
 - Connect steps with edges to define the execution order
@@ -149,6 +174,7 @@ Guidelines:
 - Include input/output schemas that match the workflow's purpose
 - For inline code: the first step uses input parameters directly, subsequent steps use the previous step's output via 'input'
 - If you need the original workflow input in a later step, use context.workflowInput
+- For LLM nodes: use userPromptExpression to build prompts dynamically from input/context. Use template literals for string interpolation.
 
 Respond ONLY with valid JSON in this exact format:
 {

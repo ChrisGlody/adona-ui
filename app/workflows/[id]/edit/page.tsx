@@ -58,6 +58,12 @@ type NodeDef = {
   inputMapping?: string;
   inputSchema?: JsonSchema;
   outputSchema?: JsonSchema;
+  // LLM fields
+  model?: string;
+  systemPrompt?: string;
+  userPromptExpression?: string;
+  temperature?: number;
+  maxTokens?: number;
 };
 
 type EdgeDef = { id: string; source: string; target: string };
@@ -411,6 +417,9 @@ export default function EditWorkflowPage() {
                   <Button size="sm" variant="outline" onClick={() => addNode("memory")}>
                     Add Memory
                   </Button>
+                  <Button size="sm" variant="outline" onClick={() => addNode("llm")}>
+                    Add LLM
+                  </Button>
                 </div>
               </Card>
 
@@ -625,6 +634,7 @@ export default function EditWorkflowPage() {
                         <option value="tool">Tool</option>
                         <option value="inline">Inline</option>
                         <option value="memory">Memory</option>
+                        <option value="llm">LLM</option>
                       </select>
                     </div>
 
@@ -723,6 +733,79 @@ export default function EditWorkflowPage() {
                               : "⚠️ This will delete ALL memories for the current user. Use with caution."}
                           </p>
                         )}
+                      </div>
+                    )}
+
+                    {currentNodeDef.type === "llm" && (
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="text-sm text-foreground">Model</Label>
+                          <select
+                            className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
+                            value={currentNodeDef.model ?? "gpt-4o-mini"}
+                            onChange={(e) => updateNodeDef({ model: e.target.value })}
+                          >
+                            <option value="gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
+                            <option value="gpt-4o">GPT-4o (powerful)</option>
+                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-sm text-foreground">System Prompt</Label>
+                          <div className="mt-1 rounded border border-border overflow-hidden">
+                            <Editor
+                              height={100}
+                              defaultLanguage="markdown"
+                              value={currentNodeDef.systemPrompt ?? "You are a helpful assistant."}
+                              onChange={(v) => updateNodeDef({ systemPrompt: v ?? "" })}
+                              options={{ minimap: { enabled: false }, wordWrap: "on" }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-sm text-foreground">User Prompt Expression</Label>
+                          <div className="mt-1 rounded border border-border overflow-hidden">
+                            <Editor
+                              height={80}
+                              defaultLanguage="javascript"
+                              value={currentNodeDef.userPromptExpression ?? "input.query || JSON.stringify(input)"}
+                              onChange={(v) => updateNodeDef({ userPromptExpression: v ?? "" })}
+                              options={{ minimap: { enabled: false } }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JS expression using: input, workflowInput, stepOutputs, context
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-sm text-foreground">Temperature</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="2"
+                              step="0.1"
+                              className="mt-1 h-9 bg-background border-border"
+                              value={currentNodeDef.temperature ?? 0.7}
+                              onChange={(e) => updateNodeDef({ temperature: parseFloat(e.target.value) || 0.7 })}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-foreground">Max Tokens</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="4096"
+                              className="mt-1 h-9 bg-background border-border"
+                              value={currentNodeDef.maxTokens ?? 1000}
+                              onChange={(e) => updateNodeDef({ maxTokens: parseInt(e.target.value) || 1000 })}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                          Returns: {"{ response: string, model: string, usage: { promptTokens, completionTokens, totalTokens } }"}
+                        </p>
                       </div>
                     )}
 
