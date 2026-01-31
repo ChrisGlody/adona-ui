@@ -27,6 +27,12 @@ interface GeneratedEdge {
   condition?: string;
 }
 
+interface EnvVar {
+  key: string;
+  value: string;
+  isSecret: boolean;
+}
+
 interface GeneratedWorkflow {
   name: string;
   description: string;
@@ -39,6 +45,7 @@ interface GeneratedWorkflow {
     type: "object";
     properties: Record<string, { type: string; description?: string }>;
   };
+  envVars?: EnvVar[];
   definition: {
     nodes: GeneratedNode[];
     edges: GeneratedEdge[];
@@ -85,6 +92,17 @@ IMPORTANT: How data flows between steps:
   - context.workflowInput: the original workflow input (for accessing initial parameters in any step)
   - context.stepOutputs: a map of all completed step outputs (e.g., context.stepOutputs.step_1.value)
   - context.userId: the current user's ID
+  - context.env: environment variables (e.g., context.env.API_KEY)
+
+ENVIRONMENT VARIABLES:
+- When the workflow needs API keys, tokens, secrets, or configuration values, create environment variables
+- NEVER hardcode API keys or secrets in the code - always use context.env.VARIABLE_NAME
+- Add envVars array with placeholder values that the user should fill in
+- Mark secrets with isSecret: true (API keys, tokens, passwords)
+- Use UPPER_SNAKE_CASE for variable names (e.g., OPENWEATHER_API_KEY, BASE_URL)
+- In code, access env vars as: const apiKey = context.env.API_KEY;
+- For URLs, use JavaScript template literals: const url = \`\${context.env.BASE_URL}/endpoint?key=\${context.env.API_KEY}\`;
+- DO NOT use {{variable}} syntax - use JavaScript backtick template literals with \${variable}
 
 Guidelines:
 - Create meaningful step names that describe what each step does
@@ -112,14 +130,18 @@ Respond ONLY with valid JSON in this exact format:
       "resultName": { "type": "string", "description": "Result description" }
     }
   },
+  "envVars": [
+    { "key": "API_KEY", "value": "<your-api-key-here>", "isSecret": true },
+    { "key": "BASE_URL", "value": "https://api.example.com", "isSecret": false }
+  ],
   "definition": {
     "nodes": [
       {
         "id": "step_1",
-        "name": "Step Name",
+        "name": "Fetch Data",
         "type": "inline",
-        "description": "What this step does",
-        "code": "export async function main(input, context) { return { result: input.value }; }",
+        "description": "Fetches data from API",
+        "code": "export async function main(input, context) {\\n  const apiKey = context.env.API_KEY;\\n  const baseUrl = context.env.BASE_URL;\\n  const url = \`\${baseUrl}/endpoint?key=\${apiKey}&q=\${input.query}\`;\\n  const response = await fetch(url);\\n  return response.json();\\n}",
         "x": 100,
         "y": 100
       }

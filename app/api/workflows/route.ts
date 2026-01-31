@@ -9,7 +9,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, name, description, executionEnv, inputSchema, outputSchema, definition } = body;
+    const { id, name, description, executionEnv, inputSchema, outputSchema, envVars, definition } = body;
     if (!name || !definition) {
       return NextResponse.json({ error: "Missing name or definition" }, { status: 400 });
     }
@@ -24,6 +24,7 @@ export async function POST(req: Request) {
       description,
       inputSchema,
       outputSchema,
+      envVars,
       definition,
     });
 

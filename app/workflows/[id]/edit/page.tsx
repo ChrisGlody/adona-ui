@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, GitBranch, Play, Sparkles } from "lucide-react";
+import { ArrowLeft, GitBranch, Play, Sparkles, Plus, Trash2, Eye, EyeOff, Key } from "lucide-react";
 import { MainNav } from "@/components/main-nav";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,12 @@ import "reactflow/dist/style.css";
 import Editor from "@monaco-editor/react";
 import { SchemaEditor, type JsonSchema } from "@/components/workflows/schema-editor";
 
+type EnvVar = {
+  key: string;
+  value: string;
+  isSecret?: boolean;
+};
+
 type WorkflowDef = {
   id: string;
   name: string;
@@ -33,6 +39,7 @@ type WorkflowDef = {
   executionEnv?: string | null;
   inputSchema?: JsonSchema | null;
   outputSchema?: JsonSchema | null;
+  envVars?: EnvVar[] | null;
   definition?: { nodes: NodeDef[]; edges: EdgeDef[] };
 };
 
@@ -67,6 +74,7 @@ export default function EditWorkflowPage() {
   const [tools, setTools] = useState<{ id: string; name: string; description?: string | null; inputSchema?: { properties?: Record<string, unknown> } }[]>([]);
   const [aiPrompt, setAiPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     if (!id) return;
@@ -167,6 +175,7 @@ export default function EditWorkflowPage() {
       executionEnv: wf.executionEnv || "db",
       inputSchema: wf.inputSchema,
       outputSchema: wf.outputSchema,
+      envVars: wf.envVars,
       definition,
     };
     const res = await fetch("/api/workflows", {
@@ -229,6 +238,7 @@ export default function EditWorkflowPage() {
         description: generated.description || wf.description,
         inputSchema: generated.inputSchema || wf.inputSchema,
         outputSchema: generated.outputSchema || wf.outputSchema,
+        envVars: generated.envVars || wf.envVars,
         definition: generated.definition,
       });
       // Update ReactFlow nodes
@@ -442,6 +452,103 @@ export default function EditWorkflowPage() {
                     />
                   </div>
                 </div>
+              </Card>
+
+              <Card className="p-3 space-y-3 bg-card border-border">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium text-foreground flex items-center gap-2">
+                    <Key className="h-4 w-4 text-primary" />
+                    Environment Variables
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const envVars = [...(wf.envVars || [])];
+                      envVars.push({ key: "", value: "", isSecret: false });
+                      setWf({ ...wf, envVars });
+                    }}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Add
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Environment variables are available in step code via <code className="bg-muted px-1 rounded">context.env.YOUR_VAR</code>
+                </p>
+                {(wf.envVars || []).length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No environment variables defined
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {(wf.envVars || []).map((envVar, idx) => (
+                      <div key={idx} className="flex gap-2 items-start p-2 bg-muted/50 rounded-lg">
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            className="h-8 bg-background border-border font-mono text-sm"
+                            placeholder="VARIABLE_NAME"
+                            value={envVar.key}
+                            onChange={(e) => {
+                              const envVars = [...(wf.envVars || [])];
+                              envVars[idx] = { ...envVars[idx], key: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "_") };
+                              setWf({ ...wf, envVars });
+                            }}
+                          />
+                          <div className="relative">
+                            <Input
+                              className="h-8 bg-background border-border text-sm pr-8"
+                              placeholder="Value"
+                              type={envVar.isSecret && !showSecrets[idx] ? "password" : "text"}
+                              value={envVar.value}
+                              onChange={(e) => {
+                                const envVars = [...(wf.envVars || [])];
+                                envVars[idx] = { ...envVars[idx], value: e.target.value };
+                                setWf({ ...wf, envVars });
+                              }}
+                            />
+                            {envVar.isSecret && (
+                              <button
+                                type="button"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                onClick={() => setShowSecrets({ ...showSecrets, [idx]: !showSecrets[idx] })}
+                              >
+                                {showSecrets[idx] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            variant={envVar.isSecret ? "default" : "outline"}
+                            className="h-8 w-8 p-0"
+                            title={envVar.isSecret ? "Secret (hidden)" : "Not secret"}
+                            onClick={() => {
+                              const envVars = [...(wf.envVars || [])];
+                              envVars[idx] = { ...envVars[idx], isSecret: !envVars[idx].isSecret };
+                              setWf({ ...wf, envVars });
+                            }}
+                          >
+                            <Key className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              const envVars = [...(wf.envVars || [])];
+                              envVars.splice(idx, 1);
+                              setWf({ ...wf, envVars });
+                            }}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             </div>
 

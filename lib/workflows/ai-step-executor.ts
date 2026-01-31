@@ -6,6 +6,7 @@ export interface StepExecutionContext {
   workflowInput: unknown;
   stepOutputs: Record<string, unknown>;
   userId: string;
+  env?: Record<string, string>;
 }
 
 export interface WorkflowStep {
@@ -119,8 +120,12 @@ function executeInlineCode(
     Promise,
     setTimeout,
     clearTimeout,
+    fetch, // Allow fetch in inline code
     __input: input,
-    __context: context,
+    __context: {
+      ...context,
+      env: context.env ?? {}, // Ensure env is always an object
+    },
     __result: undefined as unknown,
   };
 

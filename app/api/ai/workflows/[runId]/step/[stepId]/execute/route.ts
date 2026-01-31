@@ -61,10 +61,20 @@ export async function POST(
       }
     }
 
+    // Convert envVars array to a key-value object
+    const envVarsArray = (workflow.envVars as { key: string; value: string }[] | null) ?? [];
+    const env: Record<string, string> = {};
+    for (const envVar of envVarsArray) {
+      if (envVar.key) {
+        env[envVar.key] = envVar.value;
+      }
+    }
+
     const context = {
       workflowInput: run.input,
       stepOutputs,
       userId: user.sub,
+      env,
     };
 
     await createOrUpdateStepExecution({

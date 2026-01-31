@@ -283,6 +283,7 @@ export async function createAIWorkflow({
   description,
   inputSchema,
   outputSchema,
+  envVars,
   definition,
 }: {
   id?: string;
@@ -291,6 +292,7 @@ export async function createAIWorkflow({
   description?: string | null;
   inputSchema?: unknown;
   outputSchema?: unknown;
+  envVars?: unknown;
   definition: object;
 }) {
   const wfId = id ?? generateId();
@@ -304,6 +306,7 @@ export async function createAIWorkflow({
     executionEnv: "db",
     inputSchema: inputSchema ?? null,
     outputSchema: outputSchema ?? null,
+    envVars: envVars ?? null,
     updatedAt: new Date(),
   } as Record<string, unknown>;
 

@@ -81,6 +81,7 @@ export const workflows = pgTable(
     executionEnv: varchar("execution_env", { length: 10 }).default("db").notNull(),
     inputSchema: jsonb("input_schema"),
     outputSchema: jsonb("output_schema"),
+    envVars: jsonb("env_vars"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
