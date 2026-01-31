@@ -1,8 +1,8 @@
 "use server";
 
 export interface DeterminismTestParams {
-  host: string;
-  port: string;
+  host?: string;
+  port?: string;
   prompt: string;
   numTests: number;
   temperature: number;
@@ -17,13 +17,30 @@ export interface DeterminismTestResult {
   error?: string;
 }
 
+export interface InferenceConfig {
+  host: string;
+  port: string;
+}
+
+// Get the system-configured inference endpoint
+export async function getInferenceConfig(): Promise<InferenceConfig> {
+  return {
+    host: process.env.INFERENCE_HOST || "localhost",
+    port: process.env.INFERENCE_PORT || "8000",
+  };
+}
+
 export async function testDeterminism(
   params: DeterminismTestParams
 ): Promise<DeterminismTestResult> {
-  const { host, port, prompt, numTests, temperature, topP, topK, seed } = params;
+  // Use system env vars as defaults, allow override for testing
+  const systemConfig = await getInferenceConfig();
+  const host = params.host?.trim() || systemConfig.host;
+  const port = params.port?.trim() || systemConfig.port;
+  const { prompt, numTests, temperature, topP, topK, seed } = params;
 
-  if (!host.trim() || !port.trim()) {
-    return { outputs: [], deterministic: false, error: "Host and port are required" };
+  if (!host || !port) {
+    return { outputs: [], deterministic: false, error: "Host and port are required (set INFERENCE_HOST/INFERENCE_PORT env vars or provide manually)" };
   }
   if (!prompt.trim()) {
     return { outputs: [], deterministic: false, error: "Prompt is required" };

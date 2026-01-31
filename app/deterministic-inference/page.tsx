@@ -13,13 +13,15 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { testDeterminism } from "./actions";
+import { testDeterminism, getInferenceConfig } from "./actions";
 import type { DeterminismTestResult } from "./actions";
 
 export default function DeterministicInferencePage() {
   const [loading, setLoading] = useState(true);
-  const [host, setHost] = useState("localhost");
-  const [port, setPort] = useState("8000");
+  const [host, setHost] = useState("");
+  const [port, setPort] = useState("");
+  const [systemHost, setSystemHost] = useState("localhost");
+  const [systemPort, setSystemPort] = useState("8000");
   const [prompt, setPrompt] = useState("");
   const [numTests, setNumTests] = useState("2");
   const [temperature, setTemperature] = useState("0.0");
@@ -41,6 +43,12 @@ export default function DeterministicInferencePage() {
           if (isMounted) router.replace("/login");
           return;
         }
+        // Load system config
+        const config = await getInferenceConfig();
+        if (isMounted) {
+          setSystemHost(config.host);
+          setSystemPort(config.port);
+        }
       } catch {
         if (isMounted) router.replace("/login");
       } finally {
@@ -52,13 +60,13 @@ export default function DeterministicInferencePage() {
     };
   }, [router]);
 
+  // Effective host/port (use override or system default)
+  const effectiveHost = host.trim() || systemHost;
+  const effectivePort = port.trim() || systemPort;
+
   const handleTestDeterminism = async () => {
     if (!prompt.trim()) {
       setError("Please enter a prompt");
-      return;
-    }
-    if (!host.trim() || !port.trim()) {
-      setError("Please fill in both Host and Port");
       return;
     }
     const numTestsValue = parseInt(numTests, 10);
@@ -72,8 +80,8 @@ export default function DeterministicInferencePage() {
     setError(null);
     try {
       const result: DeterminismTestResult = await testDeterminism({
-        host,
-        port,
+        host: host.trim() || undefined, // Use system default if empty
+        port: port.trim() || undefined, // Use system default if empty
         prompt,
         numTests: numTestsValue,
         temperature: parseFloat(temperature) || 0.0,
@@ -109,10 +117,7 @@ export default function DeterministicInferencePage() {
     );
   }
 
-  const endpointUrl =
-    host.trim() && port.trim()
-      ? `${host.startsWith("http://") || host.startsWith("https://") ? `${host}:${port}` : `http://${host}:${port}`}/generate`
-      : "Enter host and port";
+  const endpointUrl = `${effectiveHost.startsWith("http://") || effectiveHost.startsWith("https://") ? `${effectiveHost}:${effectivePort}` : `http://${effectiveHost}:${effectivePort}`}/generate`;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -130,22 +135,28 @@ export default function DeterministicInferencePage() {
             <CardDescription>Configure the API endpoint and test parameters</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-3 mb-2">
+              <p className="text-xs text-muted-foreground mb-1">System Default (from env vars):</p>
+              <p className="text-sm font-mono text-foreground">
+                INFERENCE_HOST: <span className="text-primary">{systemHost}</span> | INFERENCE_PORT: <span className="text-primary">{systemPort}</span>
+              </p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label htmlFor="host" className="text-sm font-medium text-foreground">
-                  Host
+                  Host Override <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
-                <Input id="host" value={host} onChange={(e) => setHost(e.target.value)} placeholder="localhost" className="bg-background border-border" />
+                <Input id="host" value={host} onChange={(e) => setHost(e.target.value)} placeholder={systemHost} className="bg-background border-border" />
               </div>
               <div className="space-y-2">
                 <label htmlFor="port" className="text-sm font-medium text-foreground">
-                  Port
+                  Port Override <span className="text-muted-foreground font-normal">(optional)</span>
                 </label>
-                <Input id="port" value={port} onChange={(e) => setPort(e.target.value)} placeholder="8000" className="bg-background border-border" />
+                <Input id="port" value={port} onChange={(e) => setPort(e.target.value)} placeholder={systemPort} className="bg-background border-border" />
               </div>
             </div>
             <div className="rounded-md border border-border bg-muted/50 p-3">
-              <p className="text-xs text-muted-foreground mb-1">Endpoint URL:</p>
+              <p className="text-xs text-muted-foreground mb-1">Endpoint URL (using {host.trim() || port.trim() ? "override" : "system default"}):</p>
               <p className="text-sm font-mono text-foreground">{endpointUrl}</p>
             </div>
             <div className="space-y-2">

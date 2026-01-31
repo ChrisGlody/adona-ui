@@ -64,6 +64,11 @@ type NodeDef = {
   userPromptExpression?: string;
   temperature?: number;
   maxTokens?: number;
+  // Inference fields (host/port via system env vars)
+  promptExpression?: string;
+  topP?: number;
+  topK?: number;
+  seed?: number;
 };
 
 type EdgeDef = { id: string; source: string; target: string };
@@ -420,6 +425,9 @@ export default function EditWorkflowPage() {
                   <Button size="sm" variant="outline" onClick={() => addNode("llm")}>
                     Add LLM
                   </Button>
+                  <Button size="sm" variant="outline" onClick={() => addNode("inference")}>
+                    Add Inference
+                  </Button>
                 </div>
               </Card>
 
@@ -635,6 +643,7 @@ export default function EditWorkflowPage() {
                         <option value="inline">Inline</option>
                         <option value="memory">Memory</option>
                         <option value="llm">LLM</option>
+                        <option value="inference">Inference</option>
                       </select>
                     </div>
 
@@ -805,6 +814,79 @@ export default function EditWorkflowPage() {
                         </div>
                         <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
                           Returns: {"{ response: string, model: string, usage: { promptTokens, completionTokens, totalTokens } }"}
+                        </p>
+                      </div>
+                    )}
+
+                    {currentNodeDef.type === "inference" && (
+                      <div className="space-y-3">
+                        <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                          Uses system env vars: INFERENCE_HOST, INFERENCE_PORT
+                        </p>
+                        <div>
+                          <Label className="text-sm text-foreground">Prompt Expression</Label>
+                          <div className="mt-1 rounded border border-border overflow-hidden">
+                            <Editor
+                              height={80}
+                              defaultLanguage="javascript"
+                              value={currentNodeDef.promptExpression ?? "input.prompt || JSON.stringify(input)"}
+                              onChange={(v) => updateNodeDef({ promptExpression: v ?? "" })}
+                              options={{ minimap: { enabled: false } }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            JS expression using: input, workflowInput, stepOutputs, context
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-sm text-foreground">Temperature</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="2"
+                              step="0.1"
+                              className="mt-1 h-9 bg-background border-border"
+                              value={currentNodeDef.temperature ?? 0}
+                              onChange={(e) => updateNodeDef({ temperature: parseFloat(e.target.value) || 0 })}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-foreground">Seed</Label>
+                            <Input
+                              type="number"
+                              className="mt-1 h-9 bg-background border-border"
+                              value={currentNodeDef.seed ?? 42}
+                              onChange={(e) => updateNodeDef({ seed: parseInt(e.target.value) || 42 })}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-sm text-foreground">Top P</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              className="mt-1 h-9 bg-background border-border"
+                              value={currentNodeDef.topP ?? 1.0}
+                              onChange={(e) => updateNodeDef({ topP: parseFloat(e.target.value) || 1.0 })}
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-sm text-foreground">Top K</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              className="mt-1 h-9 bg-background border-border"
+                              value={currentNodeDef.topK ?? 0}
+                              onChange={(e) => updateNodeDef({ topK: parseInt(e.target.value) || 0 })}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                          Calls /generate endpoint. Returns: {"{ output: string, prompt: string, parameters: {...}, endpoint: string }"}
                         </p>
                       </div>
                     )}

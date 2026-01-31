@@ -8,7 +8,7 @@ const openai = new OpenAI();
 interface GeneratedNode {
   id: string;
   name: string;
-  type: "tool" | "inline" | "memory" | "llm";
+  type: "tool" | "inline" | "memory" | "llm" | "inference";
   description?: string;
   toolId?: string;
   code?: string;
@@ -24,6 +24,11 @@ interface GeneratedNode {
   userPromptExpression?: string;
   temperature?: number;
   maxTokens?: number;
+  // Inference fields (host/port managed via system env vars)
+  promptExpression?: string;
+  topP?: number;
+  topK?: number;
+  seed?: number;
 }
 
 interface GeneratedEdge {
@@ -114,7 +119,14 @@ You can create workflows with the following step types:
    - temperature: 0-2 (default 0.7)
    - maxTokens: max response tokens (default 1000)
    - Returns: { response: string, model: string, usage: { promptTokens, completionTokens, totalTokens } }
-4. "memory" - Semantic memory operations. Supported operations:
+4. "inference" - Call a custom inference endpoint (deterministic inference). Uses system env vars INFERENCE_HOST/INFERENCE_PORT internally. Fields:
+   - promptExpression: JS expression to build the prompt (e.g., "input.prompt" or "\`Generate: \${input.text}\`")
+   - temperature: 0-2 (default 0 for deterministic)
+   - topP: nucleus sampling (0-1, default 1.0)
+   - topK: top-k sampling (0 = disabled, default 0)
+   - seed: random seed for reproducibility (default 42)
+   - Returns: { output: string, prompt: string, parameters: {...}, endpoint: string }
+5. "memory" - Semantic memory operations. Supported operations:
    - "search": Search memories by query (requires queryExpression). Returns: { operation: "search", query: string, results: Array<{id, content}> }
    - "add": Add new memory content (requires queryExpression with content). Returns: { operation: "add", content: string, success: true }
    - "update": Update existing memory (requires memoryIdExpression and queryExpression with new content)

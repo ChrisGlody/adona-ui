@@ -13,7 +13,7 @@ export interface StepExecutionContext {
 export interface WorkflowStep {
   id: string;
   name: string;
-  type: "tool" | "inline" | "memory" | "llm";
+  type: "tool" | "inline" | "memory" | "llm" | "inference";
   description?: string;
   inputSchema?: unknown;
   outputSchema?: unknown;
@@ -29,6 +29,11 @@ export interface WorkflowStep {
   userPromptExpression?: string; // Expression to build the user prompt from input/context
   temperature?: number; // 0-2, default 0.7
   maxTokens?: number; // Max tokens for response
+  // Inference step fields (deterministic inference, host/port via system env vars)
+  promptExpression?: string; // Expression to build the prompt
+  topP?: number; // Top-p sampling (0-1)
+  topK?: number; // Top-k sampling (0 = disabled)
+  seed?: number; // Random seed for reproducibility
 }
 
 export async function executeStep(
@@ -52,6 +57,9 @@ export async function executeStep(
         break;
       case "llm":
         result = await executeLlmStep(stepDef, input, context);
+        break;
+      case "inference":
+        result = await executeInferenceStep(stepDef, input, context);
         break;
       default:
         throw new Error(`Unsupported step type: ${stepDef.type}`);
@@ -325,6 +333,114 @@ async function executeLlmStep(
     console.error("[LLM Step] Error:", error);
     throw new Error(
       `LLM call failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+}
+
+async function executeInferenceStep(
+  stepDef: WorkflowStep,
+  input: unknown,
+  context: StepExecutionContext
+): Promise<unknown> {
+  // Build context for expression evaluation
+  const contextForEval = {
+    workflowInput: context.workflowInput,
+    stepOutputs: context.stepOutputs,
+    input,
+  };
+
+  // Helper to evaluate expressions
+  const evalExpression = (expr: string | undefined) => {
+    if (!expr) return undefined;
+    const fn = new Function(
+      "input",
+      "workflowInput",
+      "stepOutputs",
+      "context",
+      `return (${expr});`
+    );
+    return fn(
+      contextForEval.input,
+      contextForEval.workflowInput,
+      contextForEval.stepOutputs,
+      contextForEval
+    );
+  };
+
+  // Get host and port from system environment variables (internal)
+  const host = process.env.INFERENCE_HOST || "localhost";
+  const port = process.env.INFERENCE_PORT || "8000";
+
+  // Get prompt from expression or use default
+  let prompt: string;
+  if (stepDef.promptExpression) {
+    const evaluated = evalExpression(stepDef.promptExpression);
+    prompt = typeof evaluated === "string" ? evaluated : JSON.stringify(evaluated, null, 2);
+  } else {
+    prompt = typeof input === "string" ? input : JSON.stringify(input, null, 2);
+  }
+
+  // Sampling parameters
+  const temperature = stepDef.temperature ?? 0.0; // Default to 0 for deterministic
+  const topP = stepDef.topP ?? 1.0;
+  const topK = stepDef.topK ?? 0;
+  const seed = stepDef.seed ?? 42;
+
+  // Construct URL
+  const baseUrl =
+    host.startsWith("http://") || host.startsWith("https://")
+      ? `${host}:${port}`
+      : `http://${host}:${port}`;
+  const url = `${baseUrl}/generate`;
+
+  console.log(`[Inference Step] URL: ${url}, Prompt: ${prompt.substring(0, 100)}...`);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompts: [prompt],
+        temperature,
+        top_p: topP,
+        top_k: topK,
+        seed,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `HTTP error! status: ${response.status} - ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+
+    if (!data.outputs || !Array.isArray(data.outputs) || data.outputs.length === 0) {
+      throw new Error("Invalid response format: missing outputs");
+    }
+
+    const output = data.outputs[0];
+
+    console.log(`[Inference Step] Response received: ${output.substring(0, 100)}...`);
+
+    return {
+      output,
+      prompt,
+      parameters: {
+        temperature,
+        topP,
+        topK,
+        seed,
+      },
+      endpoint: url,
+    };
+  } catch (error) {
+    console.error("[Inference Step] Error:", error);
+    throw new Error(
+      `Inference call failed: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }

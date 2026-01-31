@@ -1,7 +1,7 @@
 export interface WorkflowStep {
   id: string;
   name: string;
-  type: "tool" | "inline" | "memory" | "llm";
+  type: "tool" | "inline" | "memory" | "llm" | "inference";
   description?: string;
   inputSchema?: unknown;
   outputSchema?: unknown;
@@ -17,6 +17,11 @@ export interface WorkflowStep {
   userPromptExpression?: string;
   temperature?: number;
   maxTokens?: number;
+  // Inference step fields (host/port via system env vars)
+  promptExpression?: string;
+  topP?: number;
+  topK?: number;
+  seed?: number;
 }
 
 export interface WorkflowEdge {
