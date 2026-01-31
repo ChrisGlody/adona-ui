@@ -1,17 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { GitBranch, Pencil, Play, ChevronLeft, ChevronRight } from "lucide-react";
+import { GitBranch, Pencil, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { PaginationControls } from "@/components/ui/pagination";
 
 type WorkflowRow = {
   id: string;
@@ -21,37 +15,54 @@ type WorkflowRow = {
   updatedAt?: string | null;
 };
 
+interface PaginationData {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
 export function WorkflowsTable() {
   const router = useRouter();
   const [workflows, setWorkflows] = useState<WorkflowRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rowsPerPage, setRowsPerPage] = useState("10");
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [pagination, setPagination] = useState<PaginationData | null>(null);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/workflows/list");
-        if (res.status === 401) {
-          router.replace("/login");
-          return;
-        }
-        const data = await res.json();
-        setWorkflows(data.workflows ?? []);
-      } catch {
-        setWorkflows([]);
-      } finally {
-        setLoading(false);
+  const fetchWorkflows = useCallback(async (currentPage: number, currentLimit: number) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/workflows/list?page=${currentPage}&limit=${currentLimit}`);
+      if (res.status === 401) {
+        router.replace("/login");
+        return;
       }
-    })();
+      const data = await res.json();
+      setWorkflows(data.workflows ?? []);
+      setPagination(data.pagination ?? null);
+    } catch {
+      setWorkflows([]);
+      setPagination(null);
+    } finally {
+      setLoading(false);
+    }
   }, [router]);
 
-  const total = workflows.length;
-  const rpp = parseInt(rowsPerPage, 10) || 10;
-  const totalPages = Math.max(1, Math.ceil(total / rpp));
-  const start = page * rpp;
-  const end = Math.min(start + rpp, total);
-  const pageRows = workflows.slice(start, end);
+  useEffect(() => {
+    fetchWorkflows(page, limit);
+  }, [page, limit, fetchWorkflows]);
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit);
+    setPage(1); // Reset to first page when changing limit
+  };
 
   function formatDate(value: string | null | undefined): string {
     if (!value) return "—";
@@ -102,14 +113,14 @@ export function WorkflowsTable() {
             </tr>
           </thead>
           <tbody>
-            {pageRows.length === 0 ? (
+            {workflows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">
                   No workflows yet. Create one above.
                 </td>
               </tr>
             ) : (
-              pageRows.map((w) => (
+              workflows.map((w) => (
                 <tr
                   key={w.id}
                   className="border-b border-border hover:bg-muted/50 transition-colors"
@@ -158,51 +169,18 @@ export function WorkflowsTable() {
         </table>
       </div>
 
-      {total > 0 && (
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>
-              {start + 1}–{end} of {total}
-            </span>
-            <span className="text-border">|</span>
-            <span className="font-medium">{rowsPerPage}</span>
-            <span>rows per page</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={rowsPerPage} onValueChange={setRowsPerPage}>
-              <SelectTrigger className="w-20 h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="px-2 text-sm text-muted-foreground">
-                {page + 1} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-9 w-9"
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+      {pagination && pagination.total > 0 && (
+        <div className="px-4 border-t border-border">
+          <PaginationControls
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={pagination.total}
+            limit={pagination.limit}
+            hasNext={pagination.hasNext}
+            hasPrev={pagination.hasPrev}
+            onPageChange={handlePageChange}
+            onLimitChange={handleLimitChange}
+          />
         </div>
       )}
     </div>

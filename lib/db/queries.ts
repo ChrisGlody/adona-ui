@@ -7,7 +7,7 @@ import {
   workflowRuns,
   workflowRunSteps,
 } from "./schema";
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, count, sql } from "drizzle-orm";
 import { generateId } from "ai";
 import type { ModelMessage } from "ai";
 
@@ -165,12 +165,21 @@ export async function createOrUpdateWorkflow({
   return wfId;
 }
 
-export async function listWorkflows(owner: string) {
-  return db
+export async function listWorkflows(owner: string, limit = 10, offset = 0) {
+  const items = await db
     .select()
     .from(workflows)
     .where(eq(workflows.owner, owner))
-    .orderBy(desc(workflows.updatedAt));
+    .orderBy(desc(workflows.updatedAt))
+    .limit(limit)
+    .offset(offset);
+
+  const countResult = await db
+    .select({ count: count() })
+    .from(workflows)
+    .where(eq(workflows.owner, owner));
+
+  return { items, total: Number(countResult[0]?.count ?? 0) };
 }
 
 export async function getWorkflow(id: string, owner: string) {
@@ -421,8 +430,8 @@ export async function getRunStatus(runId: string, owner: string) {
   return { run: runs[0], steps };
 }
 
-export async function listWorkflowRuns(owner: string, limit = 50) {
-  return db
+export async function listWorkflowRuns(owner: string, limit = 10, offset = 0) {
+  const items = await db
     .select({
       id: workflowRuns.id,
       workflowId: workflowRuns.workflowId,
@@ -440,7 +449,15 @@ export async function listWorkflowRuns(owner: string, limit = 50) {
     .leftJoin(workflows, eq(workflowRuns.workflowId, workflows.id))
     .where(eq(workflowRuns.owner, owner))
     .orderBy(desc(workflowRuns.createdAt))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
+
+  const countResult = await db
+    .select({ count: count() })
+    .from(workflowRuns)
+    .where(eq(workflowRuns.owner, owner));
+
+  return { items, total: Number(countResult[0]?.count ?? 0) };
 }
 
 export async function createOrUpdateStepExecution({

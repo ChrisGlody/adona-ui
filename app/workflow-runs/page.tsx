@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { MainNav } from "@/components/main-nav"
 import { RunsTable, type WorkflowRun } from "@/components/workflow-runs/runs-table"
 import { ExecutionSummary } from "@/components/workflow-runs/execution-summary"
 import { RunDetailPanel } from "@/components/workflow-runs/run-detail-panel"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { PaginationControls } from "@/components/ui/pagination"
 
 interface RunDetails {
   run: {
@@ -44,6 +45,15 @@ interface WorkflowData {
   }
 }
 
+interface PaginationData {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  hasNext: boolean
+  hasPrev: boolean
+}
+
 export default function WorkflowRunsPage() {
   const [loading, setLoading] = useState(true)
   const [runs, setRuns] = useState<WorkflowRun[]>([])
@@ -52,36 +62,56 @@ export default function WorkflowRunsPage() {
   const [runDetails, setRunDetails] = useState<RunDetails | null>(null)
   const [workflow, setWorkflow] = useState<WorkflowData | null>(null)
   const [loadingDetails, setLoadingDetails] = useState(false)
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(10)
+  const [pagination, setPagination] = useState<PaginationData | null>(null)
   const router = useRouter()
 
-  useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        const secRes = await fetch("/api/secure")
-        if (!secRes.ok) {
-          if (mounted) router.replace("/login")
-          return
-        }
-
-        const res = await fetch("/api/workflow-runs")
-        if (!res.ok) {
-          const data = await res.json()
-          if (mounted) setError(data?.error ?? "Failed to load runs")
-          return
-        }
-        const data = await res.json()
-        if (mounted) setRuns(data.runs ?? [])
-      } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : "Failed to load runs")
-      } finally {
-        if (mounted) setLoading(false)
+  const fetchRuns = useCallback(async (currentPage: number, currentLimit: number) => {
+    setLoading(true)
+    try {
+      const secRes = await fetch("/api/secure")
+      if (!secRes.ok) {
+        router.replace("/login")
+        return
       }
-    })()
-    return () => {
-      mounted = false
+
+      const res = await fetch(`/api/workflow-runs?page=${currentPage}&limit=${currentLimit}`)
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data?.error ?? "Failed to load runs")
+        return
+      }
+      const data = await res.json()
+      setRuns(data.runs ?? [])
+      setPagination(data.pagination ?? null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load runs")
+    } finally {
+      setLoading(false)
     }
   }, [router])
+
+  useEffect(() => {
+    fetchRuns(page, limit)
+  }, [page, limit, fetchRuns])
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage)
+    // Clear selection when changing pages
+    setSelectedRun(null)
+    setRunDetails(null)
+    setWorkflow(null)
+  }
+
+  const handleLimitChange = (newLimit: number) => {
+    setLimit(newLimit)
+    setPage(1) // Reset to first page when changing limit
+    // Clear selection when changing limit
+    setSelectedRun(null)
+    setRunDetails(null)
+    setWorkflow(null)
+  }
 
   // Fetch run details when a run is selected
   const handleSelectRun = async (run: WorkflowRun) => {
@@ -121,9 +151,9 @@ export default function WorkflowRunsPage() {
     }
   }
 
-  // Calculate summary stats
+  // Calculate summary stats (note: these are for the current page only when paginated)
   const stats = {
-    total: runs.length,
+    total: pagination?.total ?? runs.length,
     completed: runs.filter(r => r.status === "completed").length,
     failed: runs.filter(r => r.status === "failed").length,
     running: runs.filter(r => r.status === "running").length,
@@ -164,11 +194,27 @@ export default function WorkflowRunsPage() {
         )}
 
         <div className="grid lg:grid-cols-[1fr_280px] gap-6 mb-6">
-          <RunsTable
-            runs={runs}
-            selectedRunId={selectedRun?.id}
-            onSelectRun={handleSelectRun}
-          />
+          <div className="space-y-0">
+            <RunsTable
+              runs={runs}
+              selectedRunId={selectedRun?.id}
+              onSelectRun={handleSelectRun}
+            />
+            {pagination && pagination.total > 0 && (
+              <div className="bg-white rounded-b-xl border border-t-0 border-border px-4">
+                <PaginationControls
+                  page={pagination.page}
+                  totalPages={pagination.totalPages}
+                  total={pagination.total}
+                  limit={pagination.limit}
+                  hasNext={pagination.hasNext}
+                  hasPrev={pagination.hasPrev}
+                  onPageChange={handlePageChange}
+                  onLimitChange={handleLimitChange}
+                />
+              </div>
+            )}
+          </div>
           <ExecutionSummary
             total={stats.total}
             completed={stats.completed}
