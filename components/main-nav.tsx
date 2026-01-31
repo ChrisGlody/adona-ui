@@ -15,13 +15,13 @@ const navItems = [
   { href: "/ai/workflows", label: "AIWorkflows", icon: Workflow },
   { href: "/hybrid-search", label: "Hybrid", icon: Search },
   { href: "/deterministic-inference", label: "Deterministic", icon: Calculator },
-  { href: "/rl-studio", label: "RL", icon: Workflow },
+  //{ href: "/rl-studio", label: "RL", icon: Workflow },
   { href: "/workflow-runs", label: "Runner", icon: Play },
   { href: "/workflow-builder", label: "Builder", icon: GitBranch },
   { href: "/function-registry", label: "Functions", icon: Zap },
-  { href: "/skills-registry", label: "Skills", icon: Sparkles },
-  { href: "/bixbench", label: "BixBench", icon: FlaskConical },
-  { href: "/skill-designer", label: "Skill", icon: Wand2 },
+  //{ href: "/skills-registry", label: "Skills", icon: Sparkles },
+  //{ href: "/bixbench", label: "BixBench", icon: FlaskConical },
+  //{ href: "/skill-designer", label: "Skill", icon: Wand2 },
 ]
 
 export function MainNav() {
