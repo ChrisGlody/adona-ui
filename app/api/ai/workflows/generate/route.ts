@@ -78,14 +78,22 @@ You can create workflows with the following step types:
 3. "http" - Makes HTTP POST requests to a URL
 4. "memory" - Searches or adds to semantic memory (operations: "search" or "add")
 
+IMPORTANT: How data flows between steps:
+- The FIRST step receives the workflow's input parameters directly (e.g., input.inputValue)
+- SUBSEQUENT steps receive the OUTPUT of the previous step as their input (e.g., if step_1 returns {incrementedValue: 2}, step_2 receives input.incrementedValue)
+- The 'context' parameter provides access to:
+  - context.workflowInput: the original workflow input (for accessing initial parameters in any step)
+  - context.stepOutputs: a map of all completed step outputs (e.g., context.stepOutputs.step_1.value)
+  - context.userId: the current user's ID
+
 Guidelines:
 - Create meaningful step names that describe what each step does
 - Connect steps with edges to define the execution order
 - Use conditions on edges for branching logic (JS expressions like: context.stepOutputs.stepId.value > 10)
 - Position nodes in a readable layout (x: 0-500, y increases by 100-150 per row)
 - Include input/output schemas that match the workflow's purpose
-- For inline code, write clean TypeScript that processes input and returns output
-- Input mapping uses JS expressions to transform data between steps
+- For inline code: the first step uses input parameters directly, subsequent steps use the previous step's output via 'input'
+- If you need the original workflow input in a later step, use context.workflowInput
 
 Respond ONLY with valid JSON in this exact format:
 {

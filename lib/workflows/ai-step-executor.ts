@@ -1,6 +1,6 @@
 import { Mem0Memory } from "../memory/mem0";
 import { getUserTool } from "../db/queries";
-import { VM } from "vm2";
+import * as vm from "vm";
 
 export interface StepExecutionContext {
   workflowInput: unknown;
@@ -102,12 +102,43 @@ function executeInlineCode(
   input: unknown,
   context: StepExecutionContext
 ): Promise<unknown> {
+  // Normalize export syntax to plain function
   const normalized = code.replace(/^export\s+(async\s+)?function\s+main/, "$1function main");
-  const script = `${normalized}; return typeof main === 'function' ? main : (typeof module !== 'undefined' && module.exports && module.exports.main) ? module.exports.main : null;`;
-  const vm = new VM({ timeout: 10000 });
-  const main = vm.run(script);
-  if (typeof main !== "function") throw new Error("No main function found in inline code");
-  return main(input, context);
+
+  // Create a sandbox context with necessary globals
+  const sandbox = {
+    console: { log: console.log, error: console.error, warn: console.warn },
+    JSON,
+    Math,
+    Date,
+    Array,
+    Object,
+    String,
+    Number,
+    Boolean,
+    Promise,
+    setTimeout,
+    clearTimeout,
+    __input: input,
+    __context: context,
+    __result: undefined as unknown,
+  };
+
+  // Wrap the code to capture the main function and execute it
+  const wrappedCode = `
+    ${normalized}
+    if (typeof main === 'function') {
+      __result = main(__input, __context);
+    } else {
+      throw new Error('No main function found in inline code');
+    }
+  `;
+
+  const vmContext = vm.createContext(sandbox);
+  const script = new vm.Script(wrappedCode, { timeout: 10000 });
+  script.runInContext(vmContext);
+
+  return Promise.resolve(sandbox.__result);
 }
 
 async function executeHttpStep(stepDef: WorkflowStep, input: unknown): Promise<unknown> {

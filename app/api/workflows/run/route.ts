@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth.server";
 import { createRun, getWorkflow } from "@/lib/db/queries";
-import { v4 as uuidv4 } from "uuid";
 
 export async function POST(req: Request) {
   const user = await getAuthUser();
@@ -13,10 +12,12 @@ export async function POST(req: Request) {
     const wfRows = await getWorkflow(workflowId, owner);
     if (wfRows.length === 0) return NextResponse.json({ error: "Workflow not found" }, { status: 404 });
 
-    const runId = resumeRunId ?? uuidv4();
+    // Use the resumeRunId if provided, otherwise create a new run and get its ID
+    let runId = resumeRunId;
 
     if (!resumeRunId) {
-      await createRun({ workflowId, owner, input });
+      // createRun returns the actual ID used in the database
+      runId = await createRun({ workflowId, owner, input });
     }
 
     return NextResponse.json({ ok: true, runId });

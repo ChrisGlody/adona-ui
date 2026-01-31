@@ -17,52 +17,6 @@ vi.mock("@/lib/memory/mem0", () => ({
   })),
 }));
 
-// Mock VM2 to avoid sandbox issues in tests
-// The actual VM2 execution in the source has issues with `return` at top level
-vi.mock("vm2", () => ({
-  VM: vi.fn().mockImplementation(() => ({
-    run: vi.fn().mockImplementation((script: string) => {
-      // The script format is: `<function definition>; return typeof main === 'function' ? main : ...`
-      // We need to extract the function and evaluate it
-
-      // First, check if there's an async function
-      const isAsync = script.includes("async function main") || script.includes("async function main");
-
-      // Find the function body by looking for function main(...)
-      const funcStartIdx = script.indexOf("function main");
-      if (funcStartIdx === -1) return null;
-
-      // Find the end of the function by counting braces
-      let braceCount = 0;
-      let funcEndIdx = funcStartIdx;
-      let foundFirstBrace = false;
-
-      for (let i = funcStartIdx; i < script.length; i++) {
-        if (script[i] === "{") {
-          braceCount++;
-          foundFirstBrace = true;
-        } else if (script[i] === "}") {
-          braceCount--;
-          if (foundFirstBrace && braceCount === 0) {
-            funcEndIdx = i + 1;
-            break;
-          }
-        }
-      }
-
-      const funcDef = script.slice(funcStartIdx, funcEndIdx);
-
-      try {
-        // Use Function constructor to create the function
-        const fn = new Function(`return ${isAsync ? "async " : ""}${funcDef.replace(/^async\s+/, "")}`)();
-        return fn;
-      } catch {
-        return null;
-      }
-    }),
-  })),
-}));
-
 // Mock global fetch
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -516,7 +470,7 @@ describe("ai-step-executor", () => {
         };
 
         await expect(executeStep(step, {}, baseContext)).rejects.toThrow(
-          "Step execution failed: Original error"
+          "Original error"
         );
       });
     });
