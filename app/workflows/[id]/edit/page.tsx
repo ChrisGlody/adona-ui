@@ -417,7 +417,7 @@ export default function EditWorkflowPage() {
                     Add Tool
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => addNode("inline")}>
-                    Add Inline
+                    Add Inline Code
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => addNode("memory")}>
                     Add Memory
@@ -426,7 +426,7 @@ export default function EditWorkflowPage() {
                     Add LLM
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => addNode("inference")}>
-                    Add Inference
+                    Add Deterministic Inference
                   </Button>
                 </div>
               </Card>
