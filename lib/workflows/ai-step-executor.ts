@@ -18,8 +18,9 @@ export interface WorkflowStep {
   outputSchema?: unknown;
   toolId?: string;
   code?: string;
-  operation?: "search" | "add";
+  operation?: "search" | "add" | "update" | "delete" | "get" | "getAll" | "deleteAll";
   queryExpression?: string;
+  memoryIdExpression?: string; // Expression to get memory ID for update/delete/get operations
   inputMapping?: string;
 }
 
@@ -136,8 +137,8 @@ function executeInlineCode(
   `;
 
   const vmContext = vm.createContext(sandbox);
-  const script = new vm.Script(wrappedCode, { timeout: 10000 });
-  script.runInContext(vmContext);
+  const script = new vm.Script(wrappedCode);
+  script.runInContext(vmContext, { timeout: 10000 });
 
   return Promise.resolve(sandbox.__result);
 }
@@ -147,8 +148,9 @@ async function executeMemoryStep(
   input: unknown,
   context: StepExecutionContext
 ): Promise<unknown> {
-  if (!stepDef.operation || !stepDef.queryExpression)
-    throw new Error("Memory step missing operation or queryExpression");
+  if (!stepDef.operation)
+    throw new Error("Memory step missing operation");
+
   const memory = new Mem0Memory();
   const { userId } = context;
   const contextForEval = {
@@ -156,15 +158,81 @@ async function executeMemoryStep(
     stepOutputs: context.stepOutputs,
     input,
   };
-  const fn = new Function("context", `return (${stepDef.queryExpression});`);
-  const query = fn(contextForEval);
-  if (stepDef.operation === "search") {
-    const results = await memory.search(query, { userId });
-    return { operation: "search", query, results };
+
+  // Helper to evaluate expressions
+  // Supports: input, workflowInput, stepOutputs, and context (which contains all three)
+  const evalExpression = (expr: string | undefined) => {
+    if (!expr) return undefined;
+    const fn = new Function(
+      "input",
+      "workflowInput",
+      "stepOutputs",
+      "context",
+      `return (${expr});`
+    );
+    return fn(
+      contextForEval.input,
+      contextForEval.workflowInput,
+      contextForEval.stepOutputs,
+      contextForEval
+    );
+  };
+
+  switch (stepDef.operation) {
+    case "search": {
+      if (!stepDef.queryExpression)
+        throw new Error("Memory search operation missing queryExpression");
+      const query = evalExpression(stepDef.queryExpression);
+      const results = await memory.search(query, { userId });
+      return { operation: "search", query, results };
+    }
+
+    case "add": {
+      if (!stepDef.queryExpression)
+        throw new Error("Memory add operation missing queryExpression");
+      const content = evalExpression(stepDef.queryExpression);
+      await memory.add([{ role: "user", content }], { userId });
+      return { operation: "add", content, success: true };
+    }
+
+    case "update": {
+      if (!stepDef.memoryIdExpression)
+        throw new Error("Memory update operation missing memoryIdExpression");
+      if (!stepDef.queryExpression)
+        throw new Error("Memory update operation missing queryExpression (new content)");
+      const memoryId = evalExpression(stepDef.memoryIdExpression);
+      const newContent = evalExpression(stepDef.queryExpression);
+      await memory.update(memoryId, newContent);
+      return { operation: "update", memoryId, content: newContent, success: true };
+    }
+
+    case "delete": {
+      if (!stepDef.memoryIdExpression)
+        throw new Error("Memory delete operation missing memoryIdExpression");
+      const memoryId = evalExpression(stepDef.memoryIdExpression);
+      await memory.delete(memoryId);
+      return { operation: "delete", memoryId, success: true };
+    }
+
+    case "get": {
+      if (!stepDef.memoryIdExpression)
+        throw new Error("Memory get operation missing memoryIdExpression");
+      const memoryId = evalExpression(stepDef.memoryIdExpression);
+      const result = await memory.get(memoryId);
+      return { operation: "get", memoryId, result };
+    }
+
+    case "getAll": {
+      const results = await memory.getAll({ userId });
+      return { operation: "getAll", results };
+    }
+
+    case "deleteAll": {
+      await memory.deleteAll({ userId });
+      return { operation: "deleteAll", success: true };
+    }
+
+    default:
+      throw new Error(`Unsupported memory operation: ${stepDef.operation}`);
   }
-  if (stepDef.operation === "add") {
-    await memory.add([{ role: "user", content: query }], { userId });
-    return { operation: "add", content: query, success: true };
-  }
-  throw new Error(`Unsupported memory operation: ${stepDef.operation}`);
 }

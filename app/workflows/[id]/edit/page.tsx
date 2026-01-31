@@ -53,6 +53,7 @@ type NodeDef = {
   url?: string;
   operation?: string;
   queryExpression?: string;
+  memoryIdExpression?: string;
   code?: string;
   inputMapping?: string;
   inputSchema?: JsonSchema;
@@ -664,23 +665,64 @@ export default function EditWorkflowPage() {
                           >
                             <option value="search">Search Memory</option>
                             <option value="add">Add to Memory</option>
+                            <option value="update">Update Memory</option>
+                            <option value="delete">Delete Memory</option>
+                            <option value="get">Get Memory by ID</option>
+                            <option value="getAll">Get All Memories</option>
+                            <option value="deleteAll">Delete All Memories</option>
                           </select>
                         </div>
-                        <div>
-                          <Label className="text-sm text-foreground">Query Expression</Label>
-                          <div className="mt-1 rounded border border-border overflow-hidden">
-                            <Editor
-                              height={100}
-                              defaultLanguage="javascript"
-                              value={currentNodeDef.queryExpression ?? "context.workflowInput.query"}
-                              onChange={(v) => updateNodeDef({ queryExpression: v ?? "" })}
-                              options={{ minimap: { enabled: false } }}
-                            />
+
+                        {/* Memory ID Expression - for update, delete, get */}
+                        {["update", "delete", "get"].includes(currentNodeDef.operation ?? "") && (
+                          <div>
+                            <Label className="text-sm text-foreground">Memory ID Expression</Label>
+                            <div className="mt-1 rounded border border-border overflow-hidden">
+                              <Editor
+                                height={60}
+                                defaultLanguage="javascript"
+                                value={currentNodeDef.memoryIdExpression ?? "context.input.memoryId"}
+                                onChange={(v) => updateNodeDef({ memoryIdExpression: v ?? "" })}
+                                options={{ minimap: { enabled: false } }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Expression to get the memory ID
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            JS expression (workflowInput, stepOutputs, input)
+                        )}
+
+                        {/* Query/Content Expression - for search, add, update */}
+                        {["search", "add", "update"].includes(currentNodeDef.operation ?? "search") && (
+                          <div>
+                            <Label className="text-sm text-foreground">
+                              {currentNodeDef.operation === "search" ? "Query Expression" :
+                               currentNodeDef.operation === "update" ? "New Content Expression" :
+                               "Content Expression"}
+                            </Label>
+                            <div className="mt-1 rounded border border-border overflow-hidden">
+                              <Editor
+                                height={100}
+                                defaultLanguage="javascript"
+                                value={currentNodeDef.queryExpression ?? "context.workflowInput.query"}
+                                onChange={(v) => updateNodeDef({ queryExpression: v ?? "" })}
+                                options={{ minimap: { enabled: false } }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              JS expression (workflowInput, stepOutputs, input)
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Info for getAll and deleteAll */}
+                        {["getAll", "deleteAll"].includes(currentNodeDef.operation ?? "") && (
+                          <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                            {currentNodeDef.operation === "getAll"
+                              ? "This will retrieve all memories for the current user."
+                              : "⚠️ This will delete ALL memories for the current user. Use with caution."}
                           </p>
-                        </div>
+                        )}
                       </div>
                     )}
 

@@ -59,8 +59,51 @@ export async function chat(
   updateStatus?: (status: string) => void,
   tools?: RegisteredTool[]
 ) {
-  const memoryContext = "  (No saved facts found)";
-  const system = `You are a helpful AI chat assistant.
+  // Extract the last user message for memory search
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  const rawContent = lastUser?.content;
+  const searchQuery =
+    typeof rawContent === "string"
+      ? rawContent
+      : rawContent
+        ? JSON.stringify(rawContent)
+        : "";
+
+  // Search memory for relevant context
+  let memories: { id: string; content: string | undefined }[] = [];
+  if (searchQuery) {
+    try {
+      updateStatus?.("Searching memory...");
+      const result = await memory.search(searchQuery, { userId });
+      memories = (result || []).map((m) => ({ id: m.id, content: m.content }));
+    } catch (error) {
+      console.error("Memory search failed:", error);
+    }
+  }
+
+  const memoryContext =
+    memories.length > 0
+      ? memories.map((m, index) => `  ${index + 1}. ${m.content}`).join("\n")
+      : "  (No saved facts found)";
+
+  const system = `You are a helpful AI chat assistant with long-term memory.
+
+IMPORTANT: You have access to the user's personal memory data below. Use this information to personalize responses and avoid repeating questions.
+
+MEMORY DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Saved User Facts:
+${memoryContext}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Guidelines:
+- Reference memory facts naturally when relevant
+- Do not invent facts not present in memory
+- If unsure, ask for clarification
+- Keep responses concise and helpful
+
+MEMORY HIGHLIGHTING:
+- Wrap memory-derived info with <memory>...</memory> tags when directly referenced.
 
 Current date: ${new Date().toISOString().split("T")[0]}
 User ID: ${userId}`;
@@ -88,6 +131,18 @@ User ID: ${userId}`;
     tools: toolTools,
     toolChoice: "auto",
   });
+
+  // Update memory with the conversation (fire and forget)
+  if (searchQuery) {
+    (async () => {
+      try {
+        updateStatus?.("Updating memory...");
+        await memory.add([{ role: "user", content: searchQuery }], { userId });
+      } catch (error) {
+        console.error("Memory update failed:", error);
+      }
+    })();
+  }
 
   return response;
 }

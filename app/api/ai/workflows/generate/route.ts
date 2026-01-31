@@ -12,8 +12,9 @@ interface GeneratedNode {
   description?: string;
   toolId?: string;
   code?: string;
-  operation?: "search" | "add";
+  operation?: "search" | "add" | "update" | "delete" | "get" | "getAll" | "deleteAll";
   queryExpression?: string;
+  memoryIdExpression?: string;
   inputMapping?: string;
   x?: number;
   y?: number;
@@ -100,7 +101,26 @@ ${existingWorkflowContext}
 You can create workflows with the following step types:
 1. "tool" - Uses a registered tool (requires toolId from available tools)
 2. "inline" - Custom JavaScript/TypeScript code with signature: export async function main(input, context) { return result; }. Use fetch() for HTTP requests.
-3. "memory" - Searches or adds to semantic memory (operations: "search" or "add")
+3. "memory" - Semantic memory operations. Supported operations:
+   - "search": Search memories by query (requires queryExpression). Returns: { operation: "search", query: string, results: Array<{id, content}> }
+   - "add": Add new memory content (requires queryExpression with content). Returns: { operation: "add", content: string, success: true }
+   - "update": Update existing memory (requires memoryIdExpression and queryExpression with new content)
+   - "delete": Delete a memory by ID (requires memoryIdExpression)
+   - "get": Get a specific memory by ID (requires memoryIdExpression). Returns: { operation: "get", memoryId: string, result: object }
+   - "getAll": Get all memories for the user (no expressions needed). Returns: { operation: "getAll", results: Array<{id, content}> }
+   - "deleteAll": Delete all memories for the user (no expressions needed, use with caution)
+
+MEMORY STEP OUTPUT FORMAT:
+- Memory search/getAll returns: { results: [{id: "...", content: "User likes pizza"}, ...] }
+- To use memory results in an inline step, extract the content:
+  const memories = input.results.map(r => r.content).filter(Boolean).join("\\n");
+- Example inline code after memory search:
+  export async function main(input, context) {
+    const query = context.workflowInput.query;
+    const memories = input.results.map(r => r.content).filter(Boolean).join("\\n");
+    const memoryContext = memories || "No relevant memories found";
+    return { response: \`Query: \${query}\\nRelevant context:\\n\${memoryContext}\` };
+  }
 
 IMPORTANT: How data flows between steps:
 - The FIRST step receives the workflow's input parameters directly (e.g., input.inputValue)

@@ -7,8 +7,9 @@ export interface WorkflowStep {
   outputSchema?: unknown;
   toolId?: string;
   code?: string;
-  operation?: "search" | "add";
+  operation?: "search" | "add" | "update" | "delete" | "get" | "getAll" | "deleteAll";
   queryExpression?: string;
+  memoryIdExpression?: string;
   inputMapping?: string;
 }
 
