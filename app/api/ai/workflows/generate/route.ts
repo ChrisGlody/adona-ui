@@ -8,10 +8,9 @@ const openai = new OpenAI();
 interface GeneratedNode {
   id: string;
   name: string;
-  type: "tool" | "inline" | "http" | "memory";
+  type: "tool" | "inline" | "memory";
   description?: string;
   toolId?: string;
-  url?: string;
   code?: string;
   operation?: "search" | "add";
   queryExpression?: string;
@@ -91,7 +90,7 @@ IMPORTANT: Modify the existing workflow based on the user's request. Keep existi
     const userTools = await getUserTools(user.sub);
     const toolsDescription = userTools.length > 0
       ? `Available tools:\n${userTools.map(t => `- ${t.name} (id: ${t.id}): ${t.description || "No description"}`).join("\n")}`
-      : "No custom tools available. Use inline code, http, or memory steps.";
+      : "No custom tools available. Use inline code or memory steps.";
 
     const systemPrompt = `You are a workflow designer AI. Generate or modify a workflow definition based on the user's description.
 
@@ -100,9 +99,8 @@ ${existingWorkflowContext}
 
 You can create workflows with the following step types:
 1. "tool" - Uses a registered tool (requires toolId from available tools)
-2. "inline" - Custom JavaScript/TypeScript code with signature: export async function main(input, context) { return result; }
-3. "http" - Makes HTTP POST requests to a URL
-4. "memory" - Searches or adds to semantic memory (operations: "search" or "add")
+2. "inline" - Custom JavaScript/TypeScript code with signature: export async function main(input, context) { return result; }. Use fetch() for HTTP requests.
+3. "memory" - Searches or adds to semantic memory (operations: "search" or "add")
 
 IMPORTANT: How data flows between steps:
 - The FIRST step receives the workflow's input parameters directly (e.g., input.inputValue)

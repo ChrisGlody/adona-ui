@@ -15,9 +15,9 @@ describe("Workflow Execution Integration", () => {
   describe("linear workflow execution", () => {
     const linearWorkflow: WorkflowDefinition = {
       nodes: [
-        { id: "fetch-data", name: "Fetch Data", type: "http", url: "https://api.example.com/data" },
+        { id: "fetch-data", name: "Fetch Data", type: "inline" },
         { id: "process-data", name: "Process Data", type: "inline", code: "fn main(i){return i;}" },
-        { id: "save-result", name: "Save Result", type: "http", url: "https://api.example.com/save" },
+        { id: "save-result", name: "Save Result", type: "inline" },
       ],
       edges: [
         { id: "e1", source: "fetch-data", target: "process-data" },
@@ -66,9 +66,9 @@ describe("Workflow Execution Integration", () => {
     const parallelWorkflow: WorkflowDefinition = {
       nodes: [
         { id: "start", name: "Start", type: "inline" },
-        { id: "branch-a", name: "Branch A", type: "http" },
-        { id: "branch-b", name: "Branch B", type: "http" },
-        { id: "branch-c", name: "Branch C", type: "http" },
+        { id: "branch-a", name: "Branch A", type: "inline" },
+        { id: "branch-b", name: "Branch B", type: "inline" },
+        { id: "branch-c", name: "Branch C", type: "inline" },
         { id: "merge", name: "Merge Results", type: "inline" },
       ],
       edges: [
@@ -126,8 +126,8 @@ describe("Workflow Execution Integration", () => {
     const conditionalWorkflow: WorkflowDefinition = {
       nodes: [
         { id: "check-input", name: "Check Input", type: "inline" },
-        { id: "success-path", name: "Success Path", type: "http" },
-        { id: "failure-path", name: "Failure Path", type: "http" },
+        { id: "success-path", name: "Success Path", type: "inline" },
+        { id: "failure-path", name: "Failure Path", type: "inline" },
       ],
       edges: [
         {
@@ -201,9 +201,9 @@ describe("Workflow Execution Integration", () => {
     const complexWorkflow: WorkflowDefinition = {
       nodes: [
         { id: "start", name: "Start", type: "inline" },
-        { id: "A", name: "Task A", type: "http" },
-        { id: "B", name: "Task B", type: "http" },
-        { id: "C", name: "Task C", type: "http" },
+        { id: "A", name: "Task A", type: "inline" },
+        { id: "B", name: "Task B", type: "inline" },
+        { id: "C", name: "Task C", type: "inline" },
         { id: "D", name: "Task D", type: "inline" },
         { id: "E", name: "Task E", type: "inline" },
         { id: "end", name: "End", type: "inline" },
@@ -263,9 +263,9 @@ describe("Workflow Execution Integration", () => {
   describe("workflow with input propagation", () => {
     const dataPipelineWorkflow: WorkflowDefinition = {
       nodes: [
-        { id: "extract", name: "Extract", type: "http" },
+        { id: "extract", name: "Extract", type: "inline" },
         { id: "transform", name: "Transform", type: "inline" },
-        { id: "load", name: "Load", type: "http" },
+        { id: "load", name: "Load", type: "inline" },
       ],
       edges: [
         { id: "e1", source: "extract", target: "transform" },
@@ -332,9 +332,9 @@ describe("Workflow Execution Integration", () => {
     it("should handle workflow with no edges (all parallel)", () => {
       const allParallelWorkflow: WorkflowDefinition = {
         nodes: [
-          { id: "task-1", name: "Task 1", type: "http" },
-          { id: "task-2", name: "Task 2", type: "http" },
-          { id: "task-3", name: "Task 3", type: "http" },
+          { id: "task-1", name: "Task 1", type: "inline" },
+          { id: "task-2", name: "Task 2", type: "inline" },
+          { id: "task-3", name: "Task 3", type: "inline" },
         ],
         edges: [],
       };

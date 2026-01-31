@@ -151,7 +151,7 @@ describe("POST /api/ai/workflows/create", () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe(
-        "Invalid node type: invalid. Must be one of: tool, inline, http, memory"
+        "Invalid node type: invalid. Must be one of: tool, inline, memory"
       );
     });
 
@@ -255,7 +255,7 @@ describe("POST /api/ai/workflows/create", () => {
           definition: {
             nodes: [
               { id: "step1", name: "Step 1", type: "inline" },
-              { id: "step2", name: "Step 2", type: "http" },
+              { id: "step2", name: "Step 2", type: "inline" },
             ],
             edges: [{ id: "e1", source: "step1", target: "step2" }],
           },
@@ -275,7 +275,7 @@ describe("POST /api/ai/workflows/create", () => {
         definition: {
           nodes: [
             { id: "step1", name: "Step 1", type: "inline" },
-            { id: "step2", name: "Step 2", type: "http" },
+            { id: "step2", name: "Step 2", type: "inline" },
           ],
           edges: [{ id: "e1", source: "step1", target: "step2" }],
         },
@@ -292,7 +292,6 @@ describe("POST /api/ai/workflows/create", () => {
             nodes: [
               { id: "tool-step", name: "Tool Step", type: "tool", toolId: "t1" },
               { id: "inline-step", name: "Inline Step", type: "inline", code: "fn main(){}" },
-              { id: "http-step", name: "HTTP Step", type: "http", url: "https://example.com" },
               { id: "memory-step", name: "Memory Step", type: "memory", operation: "search" },
             ],
             edges: [],

@@ -39,7 +39,7 @@ export async function PUT(req: Request) {
             { status: 400 }
           );
         }
-        if (!["tool", "inline", "http", "memory"].includes(node.type)) {
+        if (!["tool", "inline", "memory"].includes(node.type)) {
           return NextResponse.json(
             { error: `Invalid node type: ${node.type}` },
             { status: 400 }

@@ -254,7 +254,7 @@ describe("graph-analyzer", () => {
           {
             id: "step1",
             name: "My Step",
-            type: "http",
+            type: "inline",
             description: "A test step",
             inputSchema: { type: "object" },
           },
@@ -268,7 +268,7 @@ describe("graph-analyzer", () => {
       expect(result[0]).toEqual({
         stepId: "step1",
         name: "My Step",
-        type: "http",
+        type: "inline",
         description: "A test step",
         inputSchema: { type: "object" },
       });

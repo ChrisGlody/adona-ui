@@ -40,7 +40,7 @@ describe("POST /api/ai/workflows/run", () => {
     definition: {
       nodes: [
         { id: "step1", name: "Step 1", type: "inline" },
-        { id: "step2", name: "Step 2", type: "http" },
+        { id: "step2", name: "Step 2", type: "inline" },
       ],
       edges: [{ id: "e1", source: "step1", target: "step2" }],
     },
@@ -182,7 +182,7 @@ describe("POST /api/ai/workflows/run", () => {
     it("should return multiple executable steps for parallel nodes", async () => {
       vi.mocked(getNextExecutableSteps).mockReturnValueOnce([
         { stepId: "parallel1", name: "Parallel 1", type: "inline" },
-        { stepId: "parallel2", name: "Parallel 2", type: "http" },
+        { stepId: "parallel2", name: "Parallel 2", type: "inline" },
       ]);
 
       const response = await POST(

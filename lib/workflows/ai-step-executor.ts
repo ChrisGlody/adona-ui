@@ -12,13 +12,12 @@ export interface StepExecutionContext {
 export interface WorkflowStep {
   id: string;
   name: string;
-  type: "tool" | "inline" | "http" | "memory";
+  type: "tool" | "inline" | "memory";
   description?: string;
   inputSchema?: unknown;
   outputSchema?: unknown;
   toolId?: string;
   code?: string;
-  url?: string;
   operation?: "search" | "add";
   queryExpression?: string;
   inputMapping?: string;
@@ -39,9 +38,6 @@ export async function executeStep(
         break;
       case "inline":
         result = await executeInlineStep(stepDef, input, context);
-        break;
-      case "http":
-        result = await executeHttpStep(stepDef, input);
         break;
       case "memory":
         result = await executeMemoryStep(stepDef, input, context);
@@ -144,17 +140,6 @@ function executeInlineCode(
   script.runInContext(vmContext);
 
   return Promise.resolve(sandbox.__result);
-}
-
-async function executeHttpStep(stepDef: WorkflowStep, input: unknown): Promise<unknown> {
-  if (!stepDef.url) throw new Error("HTTP step missing URL");
-  const res = await fetch(stepDef.url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-  if (!res.ok) throw new Error(`HTTP request failed: ${res.status} ${res.statusText}`);
-  return res.json();
 }
 
 async function executeMemoryStep(

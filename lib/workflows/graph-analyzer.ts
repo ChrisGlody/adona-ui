@@ -1,13 +1,12 @@
 export interface WorkflowStep {
   id: string;
   name: string;
-  type: "tool" | "inline" | "http" | "memory";
+  type: "tool" | "inline" | "memory";
   description?: string;
   inputSchema?: unknown;
   outputSchema?: unknown;
   toolId?: string;
   code?: string;
-  url?: string;
   operation?: "search" | "add";
   queryExpression?: string;
   inputMapping?: string;

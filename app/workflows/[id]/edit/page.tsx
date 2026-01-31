@@ -407,9 +407,6 @@ export default function EditWorkflowPage() {
                   <Button size="sm" variant="outline" onClick={() => addNode("inline")}>
                     Add Inline
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => addNode("http")}>
-                    Add HTTP
-                  </Button>
                   <Button size="sm" variant="outline" onClick={() => addNode("memory")}>
                     Add Memory
                   </Button>
@@ -626,7 +623,6 @@ export default function EditWorkflowPage() {
                       >
                         <option value="tool">Tool</option>
                         <option value="inline">Inline</option>
-                        <option value="http">HTTP</option>
                         <option value="memory">Memory</option>
                       </select>
                     </div>
@@ -654,18 +650,6 @@ export default function EditWorkflowPage() {
                             ).join(", ") || "(none)"}
                           </p>
                         )}
-                      </div>
-                    )}
-
-                    {currentNodeDef.type === "http" && (
-                      <div>
-                        <Label className="text-sm text-foreground">URL</Label>
-                        <Input
-                          className="mt-1 h-9 bg-background border-border"
-                          value={currentNodeDef.url ?? ""}
-                          onChange={(e) => updateNodeDef({ url: e.target.value })}
-                          placeholder="https://..."
-                        />
                       </div>
                     )}
 

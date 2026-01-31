@@ -304,7 +304,7 @@ describe("PUT /api/ai/workflows/update", () => {
           definition: {
             nodes: [
               { id: "a", name: "A", type: "inline" },
-              { id: "b", name: "B", type: "http" },
+              { id: "b", name: "B", type: "inline" },
             ],
             edges: [{ source: "a", target: "b" }],
           },

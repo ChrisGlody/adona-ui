@@ -152,60 +152,6 @@ describe("ai-step-executor", () => {
       });
     });
 
-    describe("http steps", () => {
-      it("should make HTTP POST request and return JSON response", async () => {
-        const step: WorkflowStep = {
-          id: "step1",
-          name: "HTTP Step",
-          type: "http",
-          url: "https://api.example.com/process",
-        };
-        mockFetch.mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ result: "success" }),
-        });
-
-        const result = await executeStep(step, { data: "test" }, baseContext);
-
-        expect(mockFetch).toHaveBeenCalledWith("https://api.example.com/process", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: "test" }),
-        });
-        expect(result).toEqual({ result: "success" });
-      });
-
-      it("should throw error for HTTP step without URL", async () => {
-        const step: WorkflowStep = {
-          id: "step1",
-          name: "No URL Step",
-          type: "http",
-        };
-
-        await expect(executeStep(step, {}, baseContext)).rejects.toThrow(
-          "HTTP step missing URL"
-        );
-      });
-
-      it("should throw error for failed HTTP request", async () => {
-        const step: WorkflowStep = {
-          id: "step1",
-          name: "Failed HTTP Step",
-          type: "http",
-          url: "https://api.example.com/fail",
-        };
-        mockFetch.mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-          statusText: "Internal Server Error",
-        });
-
-        await expect(executeStep(step, {}, baseContext)).rejects.toThrow(
-          "HTTP request failed: 500 Internal Server Error"
-        );
-      });
-    });
-
     describe("tool steps", () => {
       it("should execute s3-inline tool", async () => {
         const step: WorkflowStep = {

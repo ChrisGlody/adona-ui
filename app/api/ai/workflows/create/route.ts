@@ -35,9 +35,9 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      if (!["tool", "inline", "http", "memory"].includes(node.type)) {
+      if (!["tool", "inline", "memory"].includes(node.type)) {
         return NextResponse.json(
-          { error: `Invalid node type: ${node.type}. Must be one of: tool, inline, http, memory` },
+          { error: `Invalid node type: ${node.type}. Must be one of: tool, inline, memory` },
           { status: 400 }
         );
       }

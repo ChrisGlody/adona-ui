@@ -60,7 +60,7 @@ describe("POST /api/ai/workflows/[runId]/step/[stepId]/execute", () => {
     definition: {
       nodes: [
         { id: "step-1", name: "First Step", type: "inline", code: "fn main(){}" },
-        { id: "step-2", name: "Second Step", type: "http", url: "https://example.com" },
+        { id: "step-2", name: "Second Step", type: "inline", code: "fn main(){}" },
       ],
       edges: [{ id: "e1", source: "step-1", target: "step-2" }],
     },
@@ -175,7 +175,7 @@ describe("POST /api/ai/workflows/[runId]/step/[stepId]/execute", () => {
     it("should execute step and return output with next steps", async () => {
       vi.mocked(executeStep).mockResolvedValueOnce({ result: 42 });
       vi.mocked(getNextExecutableSteps).mockReturnValueOnce([
-        { stepId: "step-2", name: "Second Step", type: "http" },
+        { stepId: "step-2", name: "Second Step", type: "inline" },
       ]);
       vi.mocked(isWorkflowComplete).mockReturnValueOnce(false);
 
@@ -247,7 +247,7 @@ describe("POST /api/ai/workflows/[runId]/step/[stepId]/execute", () => {
     it("should not mark workflow as completed if more steps remain", async () => {
       vi.mocked(executeStep).mockResolvedValueOnce({});
       vi.mocked(getNextExecutableSteps).mockReturnValueOnce([
-        { stepId: "step-2", name: "Step 2", type: "http" },
+        { stepId: "step-2", name: "Step 2", type: "inline" },
       ]);
       vi.mocked(isWorkflowComplete).mockReturnValueOnce(false);
 
