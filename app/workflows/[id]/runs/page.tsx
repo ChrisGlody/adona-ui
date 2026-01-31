@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import ReactFlow, { Background, Controls, MiniMap } from "reactflow";
+import ReactFlow, { Background, Controls, MiniMap, MarkerType } from "reactflow";
 import "reactflow/dist/style.css";
+import CustomNode from "@/components/workflows/custom-node";
 
 export default function WorkflowRunsPage() {
   const params = useParams<{ id: string }>();
@@ -329,6 +330,9 @@ export default function WorkflowRunsPage() {
     return () => clearInterval(t);
   }, [runId]);
 
+  // Register custom node types
+  const nodeTypes = useMemo(() => ({ custom: CustomNode }), []);
+
   const statusByStepId = useMemo(() => {
     const map: Record<string, string> = {};
     const steps = runData?.steps ?? [];
@@ -339,25 +343,19 @@ export default function WorkflowRunsPage() {
   const flowNodes = useMemo(() => {
     const def = workflow?.definition ?? {};
     const nodes = Array.isArray(def.nodes) ? def.nodes : [];
-    return nodes.map((n: { id: string; name?: string; x?: number; y?: number }) => {
+    return nodes.map((n: { id: string; name?: string; x?: number; y?: number; type?: string }, i: number) => {
       const status = statusByStepId[n.id] ?? "pending";
-      const color =
-        status === "completed"
-          ? "#22c55e"
-          : status === "running"
-            ? "#f59e0b"
-            : status === "queued"
-              ? "#3b82f6"
-              : status === "failed"
-                ? "#ef4444"
-                : status === "cancelled"
-                  ? "#6b7280"
-                  : "#9ca3af";
+      // Map status to CustomNode status type
+      const nodeStatus = status === "queued" ? "pending" : status as "pending" | "running" | "completed" | "failed";
       return {
         id: n.id,
-        data: { label: `${n.name ?? n.id} (${status})` },
-        position: { x: n.x ?? 0, y: n.y ?? 0 },
-        style: { backgroundColor: color + "20", border: `2px solid ${color}`, color: "#111827" },
+        type: "custom",
+        data: {
+          label: n.name ?? n.id,
+          type: n.type || "inline",
+          status: nodeStatus,
+        },
+        position: { x: n.x ?? 100, y: n.y ?? (i * 120) },
       };
     });
   }, [workflow, statusByStepId]);
@@ -369,6 +367,9 @@ export default function WorkflowRunsPage() {
       id: e.id,
       source: e.source,
       target: e.target,
+      animated: true,
+      style: { stroke: "#94a3b8", strokeWidth: 2 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: "#94a3b8" },
     }));
   }, [workflow]);
 
@@ -459,8 +460,22 @@ export default function WorkflowRunsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
             <div className="lg:col-span-7">
               <Card className="h-[60vh] bg-card border-border overflow-hidden">
-                <ReactFlow nodes={flowNodes} edges={flowEdges} fitView>
-                  <MiniMap />
+                <ReactFlow nodes={flowNodes} edges={flowEdges} nodeTypes={nodeTypes} fitView>
+                  <MiniMap
+                    nodeColor={(node) => {
+                      const nodeType = node.data?.type || "default";
+                      const colors: Record<string, string> = {
+                        tool: "#6366f1",
+                        inline: "#3b82f6",
+                        memory: "#a855f7",
+                        llm: "#10b981",
+                        inference: "#f97316",
+                        default: "#64748b",
+                      };
+                      return colors[nodeType] || colors.default;
+                    }}
+                    maskColor="rgba(0, 0, 0, 0.1)"
+                  />
                   <Controls />
                   <Background />
                 </ReactFlow>

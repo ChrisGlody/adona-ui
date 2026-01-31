@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, GitBranch, Play, Sparkles, Plus, Trash2, Eye, EyeOff, Key } from "lucide-react";
@@ -18,14 +18,18 @@ import ReactFlow, {
   addEdge,
   applyNodeChanges,
   applyEdgeChanges,
+  MarkerType,
   type Connection,
   type NodeChange,
   type EdgeChange,
+  type Node,
+  type Edge,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import Editor from "@monaco-editor/react";
 import { SchemaEditor, type JsonSchema } from "@/components/workflows/schema-editor";
 import { SelectToolModal, type Tool as SelectableTool } from "@/components/tools/select-tool-modal";
+import CustomNode from "@/components/workflows/custom-node";
 
 type EnvVar = {
   key: string;
@@ -74,13 +78,23 @@ type NodeDef = {
 
 type EdgeDef = { id: string; source: string; target: string };
 
+// Custom node data interface
+interface CustomNodeData {
+  label: string;
+  type?: string;
+  status?: "pending" | "running" | "completed" | "failed";
+}
+
+// Custom flow node type
+type FlowNode = Node<CustomNodeData>;
+
 export default function EditWorkflowPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params?.id as string;
   const [wf, setWf] = useState<WorkflowDef | null>(null);
-  const [nodes, setNodes] = useState<{ id: string; data: { label: string }; position: { x: number; y: number } }[]>([]);
-  const [edges, setEdges] = useState<{ id: string; source: string; target: string }[]>([]);
+  const [nodes, setNodes] = useState<FlowNode[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
   const [selectedNode, setSelectedNode] = useState<{ id: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -89,6 +103,9 @@ export default function EditWorkflowPage() {
   const [generating, setGenerating] = useState(false);
   const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
   const [selectToolModalOpen, setSelectToolModalOpen] = useState(false);
+
+  // Register custom node types
+  const nodeTypes = useMemo(() => ({ custom: CustomNode }), []);
 
   useEffect(() => {
     if (!id) return;
@@ -105,7 +122,8 @@ export default function EditWorkflowPage() {
         setNodes(
           (data.definition?.nodes || []).map((n: NodeDef) => ({
             id: n.id,
-            data: { label: n.name || n.id },
+            type: "custom",
+            data: { label: n.name || n.id, type: n.type || "inline" },
             position: { x: n.x ?? 0, y: n.y ?? 0 },
           }))
         );
@@ -114,6 +132,9 @@ export default function EditWorkflowPage() {
             id: e.id,
             source: e.source,
             target: e.target,
+            animated: true,
+            style: { stroke: "#94a3b8", strokeWidth: 2 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: "#94a3b8" },
           }))
         );
       } catch {
@@ -136,8 +157,21 @@ export default function EditWorkflowPage() {
     })();
   }, []);
 
-  const onConnect = (connection: Connection) =>
-    setEdges((eds) => addEdge(connection, eds));
+  const onConnect = useCallback(
+    (connection: Connection) =>
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...connection,
+            animated: true,
+            style: { stroke: "#94a3b8", strokeWidth: 2 },
+            markerEnd: { type: MarkerType.ArrowClosed, color: "#94a3b8" },
+          },
+          eds
+        )
+      ),
+    []
+  );
   const onNodesChange = (changes: NodeChange[]) =>
     setNodes((nds) => applyNodeChanges(changes, nds));
   const onEdgesChange = (changes: EdgeChange[]) =>
@@ -155,10 +189,20 @@ export default function EditWorkflowPage() {
       n.id === currentNodeDef.id ? { ...n, ...patch } : n
     );
     setWf({ ...wf, definition: def });
-    if (patch.name) {
+    // Sync name and type to ReactFlow node data
+    if (patch.name || patch.type) {
       setNodes((nds) =>
         nds.map((n) =>
-          n.id === currentNodeDef.id ? { ...n, data: { ...n.data, label: patch.name! } } : n
+          n.id === currentNodeDef.id
+            ? {
+                ...n,
+                data: {
+                  ...n.data,
+                  ...(patch.name ? { label: patch.name } : {}),
+                  ...(patch.type ? { type: patch.type } : {}),
+                },
+              }
+            : n
         )
       );
     }
@@ -210,7 +254,8 @@ export default function EditWorkflowPage() {
     setNodes((nds) =>
       nds.concat({
         id: newId,
-        data: { label: nodeName },
+        type: "custom",
+        data: { label: nodeName, type },
         position: { x: 100 + Math.random() * 80, y: 100 + Math.random() * 80 },
       })
     );
@@ -298,7 +343,8 @@ export default function EditWorkflowPage() {
       setNodes(
         (generated.definition?.nodes || []).map((n: NodeDef) => ({
           id: n.id,
-          data: { label: n.name || n.id },
+          type: "custom",
+          data: { label: n.name || n.id, type: n.type || "inline" },
           position: { x: n.x ?? 100, y: n.y ?? 100 },
         }))
       );
@@ -308,6 +354,9 @@ export default function EditWorkflowPage() {
           id: e.id,
           source: e.source,
           target: e.target,
+          animated: true,
+          style: { stroke: "#94a3b8", strokeWidth: 2 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: "#94a3b8" },
         }))
       );
       setAiPrompt("");
@@ -633,13 +682,28 @@ export default function EditWorkflowPage() {
                 <ReactFlow
                   nodes={nodes}
                   edges={edges}
+                  nodeTypes={nodeTypes}
                   onNodesChange={onNodesChange}
                   onEdgesChange={onEdgesChange}
                   onConnect={onConnect}
                   onNodeClick={(_, n) => setSelectedNode(n)}
                   fitView
                 >
-                  <MiniMap />
+                  <MiniMap
+                    nodeColor={(node) => {
+                      const nodeType = (node.data as CustomNodeData)?.type || "default";
+                      const colors: Record<string, string> = {
+                        tool: "#6366f1",
+                        inline: "#3b82f6",
+                        memory: "#a855f7",
+                        llm: "#10b981",
+                        inference: "#f97316",
+                        default: "#64748b",
+                      };
+                      return colors[nodeType] || colors.default;
+                    }}
+                    maskColor="rgba(0, 0, 0, 0.1)"
+                  />
                   <Controls />
                   <Background />
                 </ReactFlow>

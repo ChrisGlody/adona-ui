@@ -3,8 +3,9 @@
 import { useState, useMemo } from "react"
 import { Workflow, ChevronRight, X, Check, Clock, Play, AlertCircle, Hash, Type, ToggleLeft, List, Braces, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import ReactFlow, { Background, Controls } from "reactflow"
+import ReactFlow, { Background, Controls, MiniMap, MarkerType } from "reactflow"
 import "reactflow/dist/style.css"
+import CustomNode from "@/components/workflows/custom-node"
 
 interface RunStep {
   id: string
@@ -242,6 +243,9 @@ function DataDisplay({ data, title }: { data: unknown; title: string }) {
   )
 }
 
+// Register custom node types
+const nodeTypes = { custom: CustomNode }
+
 export function RunDetailPanel({ run, steps, workflow, onClose }: RunDetailPanelProps) {
   const [activeTab, setActiveTab] = useState<"input" | "output" | "steps" | "graph">("graph")
 
@@ -256,23 +260,17 @@ export function RunDetailPanel({ run, steps, workflow, onClose }: RunDetailPanel
     const nodes = Array.isArray(def.nodes) ? def.nodes : []
     return nodes.map((n, i) => {
       const status = statusByStepId[n.id] ?? "pending"
-      const color =
-        status === "completed" ? "#22c55e" :
-        status === "running" ? "#f59e0b" :
-        status === "queued" ? "#3b82f6" :
-        status === "failed" ? "#ef4444" :
-        "#9ca3af"
+      // Map status to CustomNode status type
+      const nodeStatus = status === "queued" ? "pending" : status as "pending" | "running" | "completed" | "failed"
       return {
         id: n.id,
-        data: { label: n.name ?? n.id },
-        position: { x: n.x ?? 100, y: n.y ?? (i * 100) },
-        style: {
-          backgroundColor: color + "20",
-          border: `2px solid ${color}`,
-          color: "#111827",
-          borderRadius: "8px",
-          padding: "10px 16px",
+        type: "custom",
+        data: {
+          label: n.name ?? n.id,
+          type: n.type || "inline",
+          status: nodeStatus,
         },
+        position: { x: n.x ?? 100, y: n.y ?? (i * 120) },
       }
     })
   }, [workflow, statusByStepId])
@@ -285,6 +283,8 @@ export function RunDetailPanel({ run, steps, workflow, onClose }: RunDetailPanel
       source: e.source,
       target: e.target,
       animated: true,
+      style: { stroke: "#94a3b8", strokeWidth: 2 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: "#94a3b8" },
     }))
   }, [workflow])
 
@@ -336,9 +336,24 @@ export function RunDetailPanel({ run, steps, workflow, onClose }: RunDetailPanel
         {activeTab === "graph" && (
           <div className="h-80 border border-border rounded-lg overflow-hidden">
             {flowNodes.length > 0 ? (
-              <ReactFlow nodes={flowNodes} edges={flowEdges} fitView>
+              <ReactFlow nodes={flowNodes} edges={flowEdges} nodeTypes={nodeTypes} fitView>
                 <Background />
                 <Controls />
+                <MiniMap
+                  nodeColor={(node) => {
+                    const nodeType = node.data?.type || "default"
+                    const colors: Record<string, string> = {
+                      tool: "#6366f1",
+                      inline: "#3b82f6",
+                      memory: "#a855f7",
+                      llm: "#10b981",
+                      inference: "#f97316",
+                      default: "#64748b",
+                    }
+                    return colors[nodeType] || colors.default
+                  }}
+                  maskColor="rgba(0, 0, 0, 0.1)"
+                />
               </ReactFlow>
             ) : (
               <div className="h-full flex items-center justify-center text-muted-foreground">
