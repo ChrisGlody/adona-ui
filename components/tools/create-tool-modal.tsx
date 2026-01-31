@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +53,45 @@ export function CreateToolModal({ open, onClose, onCreated }: CreateToolModalPro
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // AI generation state
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerateFromAI = async () => {
+    if (!aiPrompt.trim()) {
+      setError("Please enter a description for the tool");
+      return;
+    }
+
+    setGenerating(true);
+    setError(null);
+
+    try {
+      const res = await fetch("/api/ai/tools/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to generate tool");
+      }
+
+      const tool = data.tool;
+      setName(tool.name || "");
+      setDescription(tool.description || "");
+      setCode(tool.code || DEFAULT_CODE);
+      setInputSchema(JSON.stringify(tool.inputSchema || {}, null, 2));
+      setOutputSchema(JSON.stringify(tool.outputSchema || {}, null, 2));
+      setAiPrompt("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate tool");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleCreate = async () => {
     if (!name.trim()) {
       setError("Tool name is required");
@@ -83,7 +122,7 @@ export function CreateToolModal({ open, onClose, onCreated }: CreateToolModalPro
         body: JSON.stringify({
           name: name.trim(),
           description: description.trim() || null,
-          type: "s3-inline",
+          type: "db",
           inputSchema: parsedInputSchema,
           outputSchema: parsedOutputSchema,
           code,
@@ -101,6 +140,7 @@ export function CreateToolModal({ open, onClose, onCreated }: CreateToolModalPro
       setCode(DEFAULT_CODE);
       setInputSchema(DEFAULT_INPUT_SCHEMA);
       setOutputSchema(DEFAULT_OUTPUT_SCHEMA);
+      setAiPrompt("");
 
       onCreated();
       onClose();
@@ -133,6 +173,44 @@ export function CreateToolModal({ open, onClose, onCreated }: CreateToolModalPro
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* AI Generator */}
+          <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3">
+            <div className="flex items-center gap-2 text-primary font-medium">
+              <Sparkles className="h-4 w-4" />
+              Generate with AI
+            </div>
+            <Textarea
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Describe the tool you want to create...&#10;&#10;Example: Create a tool that fetches weather data for a city using the OpenWeatherMap API"
+              className="min-h-[80px] bg-background border-border"
+              disabled={generating}
+            />
+            <Button
+              onClick={handleGenerateFromAI}
+              disabled={generating || !aiPrompt.trim()}
+              className="w-full"
+            >
+              {generating ? (
+                <>Generating...</>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Tool
+                </>
+              )}
+            </Button>
+          </div>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">or edit manually</span>
+            </div>
+          </div>
+
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">

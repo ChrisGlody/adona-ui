@@ -14,7 +14,7 @@ export async function runRegisteredTool(
     throw new Error("Lambda tools not supported in this environment");
   }
 
-  if (tool.type === "s3-inline" && tool.implementation) {
+  if ((tool.type === "s3-inline" || tool.type === "db") && tool.implementation) {
     const code = (tool.implementation as string).replace(/^export\s+(async\s+)?function\s+main/, "$1function main");
 
     const sandbox = {

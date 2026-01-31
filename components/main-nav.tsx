@@ -19,7 +19,7 @@ const navItems = [
   //{ href: "/rl-studio", label: "RL", icon: Workflow },
 
   { href: "/workflow-builder", label: "Builder", icon: GitBranch },
-  { href: "/function-registry", label: "Functions", icon: Zap },
+  //{ href: "/function-registry", label: "Functions", icon: Zap },
   //{ href: "/skills-registry", label: "Skills", icon: Sparkles },
   //{ href: "/bixbench", label: "BixBench", icon: FlaskConical },
   //{ href: "/skill-designer", label: "Skill", icon: Wand2 },

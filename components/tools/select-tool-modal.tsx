@@ -21,6 +21,7 @@ interface SelectToolModalProps {
 
 function getToolIcon(type: string) {
   switch (type) {
+    case "db":
     case "s3-inline":
       return { icon: Code, bg: "bg-blue-100", color: "text-blue-600" };
     case "http":

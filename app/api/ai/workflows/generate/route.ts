@@ -101,8 +101,11 @@ IMPORTANT: Modify the existing workflow based on the user's request. Keep existi
     // Get user's available tools to help the AI understand what's available
     const userTools = await getUserTools(user.sub);
     const toolsDescription = userTools.length > 0
-      ? `Available tools:\n${userTools.map(t => `- ${t.name} (id: ${t.id}): ${t.description || "No description"}`).join("\n")}`
-      : "No custom tools available. Use inline code or memory steps.";
+      ? `AVAILABLE TOOLS (user can reference these by name in their prompt):
+${userTools.map(t => `- "${t.name}" (id: ${t.id}): ${t.description || "No description"}`).join("\n")}
+
+When the user mentions a tool by name (e.g., "use the multiply_numbers tool"), find its ID from the list above and use it in the workflow.`
+      : "No custom tools available. Use inline code, llm, memory, or inference steps.";
 
     const systemPrompt = `You are a workflow designer AI. Generate or modify a workflow definition based on the user's description.
 
@@ -110,7 +113,7 @@ ${toolsDescription}
 ${existingWorkflowContext}
 
 You can create workflows with the following step types:
-1. "tool" - Uses a registered tool (requires toolId from available tools)
+1. "tool" - Uses a registered tool by its ID. When user mentions a tool by name, look up its ID from the available tools list above and set toolId.
 2. "inline" - Custom JavaScript/TypeScript code with signature: export async function main(input, context) { return result; }. Use fetch() for HTTP requests.
 3. "llm" - Call an LLM (OpenAI) with a prompt. Fields:
    - model: "gpt-4o-mini" (default, fast/cheap), "gpt-4o" (powerful), "gpt-4-turbo", "gpt-3.5-turbo"

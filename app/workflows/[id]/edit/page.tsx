@@ -399,11 +399,30 @@ export default function EditWorkflowPage() {
                 <div className="space-y-2">
                   <Textarea
                     className="min-h-[80px] bg-background border-border text-foreground text-sm"
-                    placeholder="Describe the workflow you want to create...&#10;&#10;Example: Create a workflow that fetches user data from an API, processes it to extract emails, and saves the results to a database."
+                    placeholder="Describe the workflow you want to create...&#10;&#10;Example: Create a workflow that uses the multiply_numbers tool, then processes the result with an LLM."
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     disabled={generating}
                   />
+                  {tools.length > 0 && (
+                    <div className="p-2 rounded bg-muted/50 border border-border">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Available tools (mention by name in prompt):
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {tools.map((t) => (
+                          <span
+                            key={t.id}
+                            className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary cursor-pointer hover:bg-primary/20"
+                            onClick={() => setAiPrompt((p) => p + (p ? " " : "") + `use the "${t.name}" tool`)}
+                            title={t.description || "Click to add to prompt"}
+                          >
+                            {t.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <Button
                     className="w-full"
                     onClick={generateFromAI}

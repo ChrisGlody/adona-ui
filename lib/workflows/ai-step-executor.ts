@@ -83,7 +83,7 @@ async function executeToolStep(
   const tool = results[0];
   if (!tool) throw new Error(`Tool not found: ${stepDef.toolId}`);
 
-  if (tool.type === "s3-inline" && tool.implementation) {
+  if ((tool.type === "s3-inline" || tool.type === "db") && tool.implementation) {
     return executeInlineCode(tool.implementation as string, input, {
       workflowInput: input,
       stepOutputs: {},
