@@ -68,7 +68,13 @@ export function WorkflowsTable() {
     if (!value) return "—";
     try {
       const d = new Date(value);
-      return d.toLocaleDateString(undefined, { dateStyle: "short" });
+      return d.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     } catch {
       return "—";
     }

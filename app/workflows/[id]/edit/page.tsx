@@ -25,6 +25,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import Editor from "@monaco-editor/react";
 import { SchemaEditor, type JsonSchema } from "@/components/workflows/schema-editor";
+import { SelectToolModal, type Tool as SelectableTool } from "@/components/tools/select-tool-modal";
 
 type EnvVar = {
   key: string;
@@ -87,6 +88,7 @@ export default function EditWorkflowPage() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [generating, setGenerating] = useState(false);
   const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
+  const [selectToolModalOpen, setSelectToolModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -202,18 +204,30 @@ export default function EditWorkflowPage() {
     }
   }
 
-  function addNode(type: string) {
+  function addNode(type: string, toolId?: string, toolName?: string) {
     const newId = `n_${Math.random().toString(36).slice(2, 8)}`;
+    const nodeName = toolName || `${type} ${newId}`;
     setNodes((nds) =>
       nds.concat({
         id: newId,
-        data: { label: `${type} ${newId}` },
+        data: { label: nodeName },
         position: { x: 100 + Math.random() * 80, y: 100 + Math.random() * 80 },
       })
     );
     const def = { ...(wf?.definition || { nodes: [], edges: [] }) };
-    def.nodes = [...(def.nodes || []), { id: newId, name: `${type} ${newId}`, type }];
-    setWf({ ...(wf || {}), definition: def });
+    const newNode: NodeDef = { id: newId, name: nodeName, type };
+    if (toolId) {
+      newNode.toolId = toolId;
+    }
+    def.nodes = [...(def.nodes || []), newNode];
+    if (wf) {
+      setWf({ ...wf, definition: def });
+    }
+  }
+
+  function handleToolSelected(tool: SelectableTool) {
+    addNode("tool", tool.id, tool.name);
+    setSelectToolModalOpen(false);
   }
 
   function deleteSelectedNode() {
@@ -413,7 +427,7 @@ export default function EditWorkflowPage() {
               <Card className="p-3 space-y-2 bg-card border-border">
                 <div className="font-medium text-foreground">Palette</div>
                 <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => addNode("tool")}>
+                  <Button size="sm" variant="outline" onClick={() => setSelectToolModalOpen(true)}>
                     Add Tool
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => addNode("inline")}>
@@ -953,6 +967,13 @@ export default function EditWorkflowPage() {
           </div>
         </div>
       </div>
+
+      {/* Select Tool Modal */}
+      <SelectToolModal
+        open={selectToolModalOpen}
+        onClose={() => setSelectToolModalOpen(false)}
+        onSelect={handleToolSelected}
+      />
     </div>
   );
 }

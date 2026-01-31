@@ -26,7 +26,13 @@ interface RunsTableProps {
 function formatDate(dateStr: string | null) {
   if (!dateStr) return "-"
   const d = new Date(dateStr)
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  return d.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 function formatDuration(startedAt: string | null, endedAt: string | null) {
