@@ -60,7 +60,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { prompt } = body;
+    const { prompt, existingWorkflow } = body;
 
     if (!prompt || typeof prompt !== "string") {
       return NextResponse.json(
@@ -69,15 +69,34 @@ export async function POST(req: Request) {
       );
     }
 
+    // Build context about existing workflow if provided
+    let existingWorkflowContext = "";
+    if (existingWorkflow && existingWorkflow.definition?.nodes?.length > 0) {
+      existingWorkflowContext = `
+EXISTING WORKFLOW TO MODIFY:
+The user already has a workflow. They want to modify it based on their prompt.
+- Name: ${existingWorkflow.name || "Untitled"}
+- Description: ${existingWorkflow.description || "No description"}
+- Current steps: ${JSON.stringify(existingWorkflow.definition.nodes, null, 2)}
+- Current edges: ${JSON.stringify(existingWorkflow.definition.edges || [], null, 2)}
+- Current env vars: ${JSON.stringify(existingWorkflow.envVars || [], null, 2)}
+- Input schema: ${JSON.stringify(existingWorkflow.inputSchema || {}, null, 2)}
+- Output schema: ${JSON.stringify(existingWorkflow.outputSchema || {}, null, 2)}
+
+IMPORTANT: Modify the existing workflow based on the user's request. Keep existing steps/envVars that are still relevant. Add, update, or remove steps as needed based on what the user asks.
+`;
+    }
+
     // Get user's available tools to help the AI understand what's available
     const userTools = await getUserTools(user.sub);
     const toolsDescription = userTools.length > 0
       ? `Available tools:\n${userTools.map(t => `- ${t.name} (id: ${t.id}): ${t.description || "No description"}`).join("\n")}`
       : "No custom tools available. Use inline code, http, or memory steps.";
 
-    const systemPrompt = `You are a workflow designer AI. Generate a workflow definition based on the user's description.
+    const systemPrompt = `You are a workflow designer AI. Generate or modify a workflow definition based on the user's description.
 
 ${toolsDescription}
+${existingWorkflowContext}
 
 You can create workflows with the following step types:
 1. "tool" - Uses a registered tool (requires toolId from available tools)

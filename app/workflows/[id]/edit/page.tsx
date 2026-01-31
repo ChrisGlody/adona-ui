@@ -220,10 +220,37 @@ export default function EditWorkflowPage() {
     if (!aiPrompt.trim() || !wf) return;
     setGenerating(true);
     try {
+      // Include current workflow state so AI can modify it
+      const currentWorkflow = {
+        name: wf.name,
+        description: wf.description,
+        inputSchema: wf.inputSchema,
+        outputSchema: wf.outputSchema,
+        envVars: wf.envVars,
+        definition: {
+          nodes: nodes.map((n) => ({
+            id: n.id,
+            name: n.data?.label,
+            x: n.position.x,
+            y: n.position.y,
+            ...(wf.definition?.nodes?.find((d) => d.id === n.id) || {}),
+          })),
+          edges: edges.map((e) => ({
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            ...(wf.definition?.edges?.find((d) => d.id === e.id) || {}),
+          })),
+        },
+      };
+
       const res = await fetch("/api/ai/workflows/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: aiPrompt }),
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          existingWorkflow: currentWorkflow,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
