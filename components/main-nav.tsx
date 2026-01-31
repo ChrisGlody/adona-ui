@@ -8,15 +8,16 @@ import { Button } from "@/components/ui/button"
 import UserButton from "@/components/user-button"
 
 const navItems = [
-  { href: "/", label: "Observability", icon: Activity },
-  { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/tools", label: "Tools", icon: Wrench },
+  //{ href: "/", label: "Observability", icon: Activity },
+  //{ href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/workflows", label: "Workflows", icon: GitFork },
-  { href: "/ai/workflows", label: "AIWorkflows", icon: Workflow },
+  { href: "/workflow-runs", label: "Runner", icon: Play },
+  { href: "/tools", label: "Tools", icon: Wrench },
+  //{ href: "/ai/workflows", label: "AIWorkflows", icon: Workflow },
   { href: "/hybrid-search", label: "Hybrid", icon: Search },
   { href: "/deterministic-inference", label: "Deterministic", icon: Calculator },
   //{ href: "/rl-studio", label: "RL", icon: Workflow },
-  { href: "/workflow-runs", label: "Runner", icon: Play },
+
   { href: "/workflow-builder", label: "Builder", icon: GitBranch },
   { href: "/function-registry", label: "Functions", icon: Zap },
   //{ href: "/skills-registry", label: "Skills", icon: Sparkles },

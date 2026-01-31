@@ -31,15 +31,6 @@ export default function WorkflowsPage() {
       <MainNav />
 
       <div className="bg-gradient-to-r from-primary/90 to-accent/90 relative overflow-hidden">
-        <div className="relative border-b border-primary-foreground/10">
-          <div className="container mx-auto px-6">
-            <div className="flex items-center justify-between h-14">
-              <h1 className="text-xl font-semibold text-primary-foreground">
-                Workflows
-              </h1>
-            </div>
-          </div>
-        </div>
         <div className="relative container mx-auto px-6 py-10">
           <div className="flex items-start justify-between gap-4">
             <div>

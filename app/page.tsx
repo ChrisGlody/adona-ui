@@ -1,7 +1,4 @@
-"use client"
-
-import { useState } from "react"
-import { DashboardHeader } from "@/components/dashboard-header"
+import { redirect } from "next/navigation"
 import { DashboardFooter } from "@/components/dashboard-footer"
 import { LogsExplorer } from "@/components/logs-explorer"
 import { IncidentsPanel } from "@/components/incidents-panel"
@@ -10,12 +7,11 @@ import { ActionBar } from "@/components/action-bar"
 import { MainNav } from "@/components/main-nav"
 
 export default function ObservabilityDashboard() {
-  const [activeTab, setActiveTab] = useState("logs")
+  redirect("/workflows")
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <MainNav />
-      <DashboardHeader activeTab={activeTab} onTabChange={setActiveTab} />
       
       <main className="flex-1 container mx-auto px-4 py-6">
         <ActionBar />

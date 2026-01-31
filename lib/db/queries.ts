@@ -418,6 +418,28 @@ export async function getRunStatus(runId: string, owner: string) {
   return { run: runs[0], steps };
 }
 
+export async function listWorkflowRuns(owner: string, limit = 50) {
+  return db
+    .select({
+      id: workflowRuns.id,
+      workflowId: workflowRuns.workflowId,
+      status: workflowRuns.status,
+      input: workflowRuns.input,
+      output: workflowRuns.output,
+      error: workflowRuns.error,
+      createdAt: workflowRuns.createdAt,
+      updatedAt: workflowRuns.updatedAt,
+      startedAt: workflowRuns.startedAt,
+      endedAt: workflowRuns.endedAt,
+      workflowName: workflows.name,
+    })
+    .from(workflowRuns)
+    .leftJoin(workflows, eq(workflowRuns.workflowId, workflows.id))
+    .where(eq(workflowRuns.owner, owner))
+    .orderBy(desc(workflowRuns.createdAt))
+    .limit(limit);
+}
+
 export async function createOrUpdateStepExecution({
   runId,
   stepId,
