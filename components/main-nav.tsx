@@ -15,7 +15,7 @@ const navItems = [
   { href: "/tools", label: "Tools", icon: Wrench },
   //{ href: "/ai/workflows", label: "AIWorkflows", icon: Workflow },
   { href: "/hybrid-search", label: "Hybrid", icon: Search },
-  { href: "/deterministic-inference", label: "Deterministic", icon: Calculator },
+  { href: "/deterministic-inference", label: "Determinisme", icon: Calculator },
   //{ href: "/rl-studio", label: "RL", icon: Workflow },
 
   { href: "/workflow-builder", label: "Builder", icon: GitBranch },
