@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, GitBranch, Play, Sparkles, Plus, Trash2, Eye, EyeOff, Key } from "lucide-react";
+import { ArrowLeft, GitBranch, Play, Sparkles, Plus, Trash2, Eye, EyeOff, Key, X } from "lucide-react";
 import { MainNav } from "@/components/main-nav";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -441,7 +441,7 @@ export default function EditWorkflowPage() {
             </Button>
           </header>
 
-          {/* Three columns: Left (Palette + Settings) | Canvas | Right (Inspector) */}
+          {/* Two columns: Left (Palette + Settings) | Canvas */}
           <div className="flex-1 grid grid-cols-12 gap-4 p-4 min-h-0">
             {/* Left panel */}
             <div className="col-span-4 flex flex-col gap-4 overflow-y-auto">
@@ -692,8 +692,8 @@ export default function EditWorkflowPage() {
               )}
             </div>
 
-            {/* Center - ReactFlow */}
-            <div className="col-span-5 min-h-[400px]">
+            {/* Center - ReactFlow (expanded to fill space) */}
+            <div className="col-span-8 min-h-[400px]">
               <Card className="h-full min-h-[400px] bg-card border-border overflow-hidden">
                 <ReactFlow
                   nodes={nodes}
@@ -726,346 +726,370 @@ export default function EditWorkflowPage() {
               </Card>
             </div>
 
-            {/* Right - Inspector */}
-            <div className="col-span-3 overflow-y-auto">
-              <Card className="p-3 space-y-3 bg-card border-border">
-                <div className="font-medium text-foreground">Inspector</div>
-                {currentNodeDef ? (
-                  <div className="space-y-3">
-                    <p className="text-xs text-muted-foreground font-mono">{currentNodeDef.id}</p>
-                    <Button variant="destructive" size="sm" onClick={deleteSelectedNode}>
-                      Delete Step
-                    </Button>
-                    <div>
-                      <Label className="text-sm text-foreground">Step Name</Label>
-                      <Input
-                        className="mt-1 h-9 bg-background border-border"
-                        value={currentNodeDef.name ?? ""}
-                        onChange={(e) => updateNodeDef({ name: e.target.value })}
-                        placeholder="Step name"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-sm text-foreground">Type</Label>
-                      <select
-                        className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
-                        value={currentNodeDef.type ?? "tool"}
-                        onChange={(e) => updateNodeDef({ type: e.target.value })}
-                      >
-                        <option value="tool">Tool</option>
-                        <option value="inline">Inline</option>
-                        <option value="memory">Memory</option>
-                        <option value="llm">LLM</option>
-                        <option value="inference">Inference</option>
-                      </select>
-                    </div>
-
-                    {currentNodeDef.type === "tool" && (
-                      <div>
-                        <Label className="text-sm text-foreground">Tool</Label>
-                        <select
-                          className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
-                          value={currentNodeDef.toolId ?? ""}
-                          onChange={(e) => updateNodeDef({ toolId: e.target.value })}
-                        >
-                          <option value="">Choose a tool…</option>
-                          {tools.map((t) => (
-                            <option key={t.id} value={t.id}>
-                              {t.name} — {t.description ?? ""}
-                            </option>
-                          ))}
-                        </select>
-                        {tools.find((t) => t.id === currentNodeDef.toolId) && (
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Input fields:{" "}
-                            {Object.keys(
-                              tools.find((t) => t.id === currentNodeDef.toolId)?.inputSchema?.properties ?? {}
-                            ).join(", ") || "(none)"}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {currentNodeDef.type === "memory" && (
-                      <div className="space-y-3">
-                        <div>
-                          <Label className="text-sm text-foreground">Operation</Label>
-                          <select
-                            className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
-                            value={currentNodeDef.operation ?? "search"}
-                            onChange={(e) => updateNodeDef({ operation: e.target.value })}
-                          >
-                            <option value="search">Search Memory</option>
-                            <option value="add">Add to Memory</option>
-                            <option value="update">Update Memory</option>
-                            <option value="delete">Delete Memory</option>
-                            <option value="get">Get Memory by ID</option>
-                            <option value="getAll">Get All Memories</option>
-                            <option value="deleteAll">Delete All Memories</option>
-                          </select>
-                        </div>
-
-                        {/* Memory ID Expression - for update, delete, get */}
-                        {["update", "delete", "get"].includes(currentNodeDef.operation ?? "") && (
-                          <div>
-                            <Label className="text-sm text-foreground">Memory ID Expression</Label>
-                            <div className="mt-1 rounded border border-border overflow-hidden">
-                              <Editor
-                                height={60}
-                                defaultLanguage="javascript"
-                                value={currentNodeDef.memoryIdExpression ?? "context.input.memoryId"}
-                                onChange={(v) => updateNodeDef({ memoryIdExpression: v ?? "" })}
-                                options={{ minimap: { enabled: false } }}
-                              />
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Expression to get the memory ID
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Query/Content Expression - for search, add, update */}
-                        {["search", "add", "update"].includes(currentNodeDef.operation ?? "search") && (
-                          <div>
-                            <Label className="text-sm text-foreground">
-                              {currentNodeDef.operation === "search" ? "Query Expression" :
-                               currentNodeDef.operation === "update" ? "New Content Expression" :
-                               "Content Expression"}
-                            </Label>
-                            <div className="mt-1 rounded border border-border overflow-hidden">
-                              <Editor
-                                height={100}
-                                defaultLanguage="javascript"
-                                value={currentNodeDef.queryExpression ?? "context.workflowInput.query"}
-                                onChange={(v) => updateNodeDef({ queryExpression: v ?? "" })}
-                                options={{ minimap: { enabled: false } }}
-                              />
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              JS expression (workflowInput, stepOutputs, input)
-                            </p>
-                          </div>
-                        )}
-
-                        {/* Info for getAll and deleteAll */}
-                        {["getAll", "deleteAll"].includes(currentNodeDef.operation ?? "") && (
-                          <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
-                            {currentNodeDef.operation === "getAll"
-                              ? "This will retrieve all memories for the current user."
-                              : "⚠️ This will delete ALL memories for the current user. Use with caution."}
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {currentNodeDef.type === "llm" && (
-                      <div className="space-y-3">
-                        <div>
-                          <Label className="text-sm text-foreground">Model</Label>
-                          <select
-                            className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
-                            value={currentNodeDef.model ?? "gpt-4o-mini"}
-                            onChange={(e) => updateNodeDef({ model: e.target.value })}
-                          >
-                            <option value="gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
-                            <option value="gpt-4o">GPT-4o (powerful)</option>
-                            <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                          </select>
-                        </div>
-                        <div>
-                          <Label className="text-sm text-foreground">System Prompt</Label>
-                          <div className="mt-1 rounded border border-border overflow-hidden">
-                            <Editor
-                              height={100}
-                              defaultLanguage="markdown"
-                              value={currentNodeDef.systemPrompt ?? "You are a helpful assistant."}
-                              onChange={(v) => updateNodeDef({ systemPrompt: v ?? "" })}
-                              options={{ minimap: { enabled: false }, wordWrap: "on" }}
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <Label className="text-sm text-foreground">User Prompt Expression</Label>
-                          <div className="mt-1 rounded border border-border overflow-hidden">
-                            <Editor
-                              height={80}
-                              defaultLanguage="javascript"
-                              value={currentNodeDef.userPromptExpression ?? "input.query || JSON.stringify(input)"}
-                              onChange={(v) => updateNodeDef({ userPromptExpression: v ?? "" })}
-                              options={{ minimap: { enabled: false } }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            JS expression using: input, workflowInput, stepOutputs, context
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-sm text-foreground">Temperature</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="2"
-                              step="0.1"
-                              className="mt-1 h-9 bg-background border-border"
-                              value={currentNodeDef.temperature ?? 0.7}
-                              onChange={(e) => updateNodeDef({ temperature: parseFloat(e.target.value) || 0.7 })}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-sm text-foreground">Max Tokens</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="4096"
-                              className="mt-1 h-9 bg-background border-border"
-                              value={currentNodeDef.maxTokens ?? 1000}
-                              onChange={(e) => updateNodeDef({ maxTokens: parseInt(e.target.value) || 1000 })}
-                            />
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
-                          Returns: {"{ response: string, model: string, usage: { promptTokens, completionTokens, totalTokens } }"}
-                        </p>
-                      </div>
-                    )}
-
-                    {currentNodeDef.type === "inference" && (
-                      <div className="space-y-3">
-                        <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
-                          Uses system env vars: INFERENCE_HOST, INFERENCE_PORT
-                        </p>
-                        <div>
-                          <Label className="text-sm text-foreground">Prompt Expression</Label>
-                          <div className="mt-1 rounded border border-border overflow-hidden">
-                            <Editor
-                              height={80}
-                              defaultLanguage="javascript"
-                              value={currentNodeDef.promptExpression ?? "input.prompt || JSON.stringify(input)"}
-                              onChange={(v) => updateNodeDef({ promptExpression: v ?? "" })}
-                              options={{ minimap: { enabled: false } }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            JS expression using: input, workflowInput, stepOutputs, context
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-sm text-foreground">Temperature</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="2"
-                              step="0.1"
-                              className="mt-1 h-9 bg-background border-border"
-                              value={currentNodeDef.temperature ?? 0}
-                              onChange={(e) => updateNodeDef({ temperature: parseFloat(e.target.value) || 0 })}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-sm text-foreground">Seed</Label>
-                            <Input
-                              type="number"
-                              className="mt-1 h-9 bg-background border-border"
-                              value={currentNodeDef.seed ?? 42}
-                              onChange={(e) => updateNodeDef({ seed: parseInt(e.target.value) || 42 })}
-                            />
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <Label className="text-sm text-foreground">Top P</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="1"
-                              step="0.1"
-                              className="mt-1 h-9 bg-background border-border"
-                              value={currentNodeDef.topP ?? 1.0}
-                              onChange={(e) => updateNodeDef({ topP: parseFloat(e.target.value) || 1.0 })}
-                            />
-                          </div>
-                          <div>
-                            <Label className="text-sm text-foreground">Top K</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              className="mt-1 h-9 bg-background border-border"
-                              value={currentNodeDef.topK ?? 0}
-                              onChange={(e) => updateNodeDef({ topK: parseInt(e.target.value) || 0 })}
-                            />
-                          </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
-                          Calls /generate endpoint. Returns: {"{ output: string, prompt: string, parameters: {...}, endpoint: string }"}
-                        </p>
-                      </div>
-                    )}
-
-                    {currentNodeDef.type === "inline" && (
-                      <div>
-                        <Label className="text-sm text-foreground">Code (main(input, context))</Label>
-                        <div className="mt-1 rounded border border-border overflow-hidden">
-                          <Editor
-                            height={180}
-                            defaultLanguage="typescript"
-                            value={
-                              currentNodeDef.code ??
-                              "export async function main(input, context){return input;}"
-                            }
-                            onChange={(v) => updateNodeDef({ code: v ?? "" })}
-                            options={{ minimap: { enabled: false } }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <Label className="text-sm text-foreground">Input Mapping (JS expression)</Label>
-                      <div className="mt-1 rounded border border-border overflow-hidden">
-                        <Editor
-                          height={80}
-                          defaultLanguage="javascript"
-                          value={currentNodeDef.inputMapping ?? "({})"}
-                          onChange={(v) => updateNodeDef({ inputMapping: v ?? "" })}
-                          options={{ minimap: { enabled: false } }}
-                        />
-                      </div>
-                    </div>
-
-                    <SchemaEditor
-                      title="Input Schema"
-                      schema={
-                        currentNodeDef.inputSchema ?? {
-                          type: "object",
-                          properties: {},
-                          required: [],
-                        }
-                      }
-                      onChange={(s) => updateNodeDef({ inputSchema: s })}
-                    />
-                    <SchemaEditor
-                      title="Output Schema"
-                      schema={
-                        currentNodeDef.outputSchema ?? {
-                          type: "object",
-                          properties: {},
-                          required: [],
-                        }
-                      }
-                      onChange={(s) => updateNodeDef({ outputSchema: s })}
-                    />
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Select a node to edit</p>
-                )}
-              </Card>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Node Inspector Modal */}
+      {selectedNode && currentNodeDef && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50" onClick={() => setSelectedNode(null)} />
+
+          {/* Modal */}
+          <div className="relative bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  {currentNodeDef.name || "Step Configuration"}
+                </h2>
+                <p className="text-xs text-muted-foreground font-mono">{currentNodeDef.id}</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedNode(null)}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div className="flex gap-2">
+                <Button variant="destructive" size="sm" onClick={() => { deleteSelectedNode(); }}>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete Step
+                </Button>
+              </div>
+
+              <div>
+                <Label className="text-sm text-foreground">Step Name</Label>
+                <Input
+                  className="mt-1 h-9 bg-background border-border"
+                  value={currentNodeDef.name ?? ""}
+                  onChange={(e) => updateNodeDef({ name: e.target.value })}
+                  placeholder="Step name"
+                />
+              </div>
+
+              <div>
+                <Label className="text-sm text-foreground">Type</Label>
+                <select
+                  className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
+                  value={currentNodeDef.type ?? "tool"}
+                  onChange={(e) => updateNodeDef({ type: e.target.value })}
+                >
+                  <option value="tool">Tool</option>
+                  <option value="inline">Inline</option>
+                  <option value="memory">Memory</option>
+                  <option value="llm">LLM</option>
+                  <option value="inference">Inference</option>
+                </select>
+              </div>
+
+              {currentNodeDef.type === "tool" && (
+                <div>
+                  <Label className="text-sm text-foreground">Tool</Label>
+                  <select
+                    className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
+                    value={currentNodeDef.toolId ?? ""}
+                    onChange={(e) => updateNodeDef({ toolId: e.target.value })}
+                  >
+                    <option value="">Choose a tool…</option>
+                    {tools.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} — {t.description ?? ""}
+                      </option>
+                    ))}
+                  </select>
+                  {tools.find((t) => t.id === currentNodeDef.toolId) && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Input fields:{" "}
+                      {Object.keys(
+                        tools.find((t) => t.id === currentNodeDef.toolId)?.inputSchema?.properties ?? {}
+                      ).join(", ") || "(none)"}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {currentNodeDef.type === "memory" && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm text-foreground">Operation</Label>
+                    <select
+                      className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
+                      value={currentNodeDef.operation ?? "search"}
+                      onChange={(e) => updateNodeDef({ operation: e.target.value })}
+                    >
+                      <option value="search">Search Memory</option>
+                      <option value="add">Add to Memory</option>
+                      <option value="update">Update Memory</option>
+                      <option value="delete">Delete Memory</option>
+                      <option value="get">Get Memory by ID</option>
+                      <option value="getAll">Get All Memories</option>
+                      <option value="deleteAll">Delete All Memories</option>
+                    </select>
+                  </div>
+
+                  {["update", "delete", "get"].includes(currentNodeDef.operation ?? "") && (
+                    <div>
+                      <Label className="text-sm text-foreground">Memory ID Expression</Label>
+                      <div className="mt-1 rounded border border-border overflow-hidden">
+                        <Editor
+                          height={60}
+                          defaultLanguage="javascript"
+                          value={currentNodeDef.memoryIdExpression ?? "context.input.memoryId"}
+                          onChange={(v) => updateNodeDef({ memoryIdExpression: v ?? "" })}
+                          options={{ minimap: { enabled: false } }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Expression to get the memory ID
+                      </p>
+                    </div>
+                  )}
+
+                  {["search", "add", "update"].includes(currentNodeDef.operation ?? "search") && (
+                    <div>
+                      <Label className="text-sm text-foreground">
+                        {currentNodeDef.operation === "search" ? "Query Expression" :
+                         currentNodeDef.operation === "update" ? "New Content Expression" :
+                         "Content Expression"}
+                      </Label>
+                      <div className="mt-1 rounded border border-border overflow-hidden">
+                        <Editor
+                          height={100}
+                          defaultLanguage="javascript"
+                          value={currentNodeDef.queryExpression ?? "context.workflowInput.query"}
+                          onChange={(v) => updateNodeDef({ queryExpression: v ?? "" })}
+                          options={{ minimap: { enabled: false } }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        JS expression (workflowInput, stepOutputs, input)
+                      </p>
+                    </div>
+                  )}
+
+                  {["getAll", "deleteAll"].includes(currentNodeDef.operation ?? "") && (
+                    <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                      {currentNodeDef.operation === "getAll"
+                        ? "This will retrieve all memories for the current user."
+                        : "⚠️ This will delete ALL memories for the current user. Use with caution."}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {currentNodeDef.type === "llm" && (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="text-sm text-foreground">Model</Label>
+                    <select
+                      className="mt-1 w-full h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
+                      value={currentNodeDef.model ?? "gpt-4o-mini"}
+                      onChange={(e) => updateNodeDef({ model: e.target.value })}
+                    >
+                      <option value="gpt-4o-mini">GPT-4o Mini (fast, cheap)</option>
+                      <option value="gpt-4o">GPT-4o (powerful)</option>
+                      <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                      <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-foreground">System Prompt</Label>
+                    <div className="mt-1 rounded border border-border overflow-hidden">
+                      <Editor
+                        height={100}
+                        defaultLanguage="markdown"
+                        value={currentNodeDef.systemPrompt ?? "You are a helpful assistant."}
+                        onChange={(v) => updateNodeDef({ systemPrompt: v ?? "" })}
+                        options={{ minimap: { enabled: false }, wordWrap: "on" }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-foreground">User Prompt Expression</Label>
+                    <div className="mt-1 rounded border border-border overflow-hidden">
+                      <Editor
+                        height={80}
+                        defaultLanguage="javascript"
+                        value={currentNodeDef.userPromptExpression ?? "input.query || JSON.stringify(input)"}
+                        onChange={(v) => updateNodeDef({ userPromptExpression: v ?? "" })}
+                        options={{ minimap: { enabled: false } }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JS expression using: input, workflowInput, stepOutputs, context
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-sm text-foreground">Temperature</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        className="mt-1 h-9 bg-background border-border"
+                        value={currentNodeDef.temperature ?? 0.7}
+                        onChange={(e) => updateNodeDef({ temperature: parseFloat(e.target.value) || 0.7 })}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-foreground">Max Tokens</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="4096"
+                        className="mt-1 h-9 bg-background border-border"
+                        value={currentNodeDef.maxTokens ?? 1000}
+                        onChange={(e) => updateNodeDef({ maxTokens: parseInt(e.target.value) || 1000 })}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                    Returns: {"{ response: string, model: string, usage: { promptTokens, completionTokens, totalTokens } }"}
+                  </p>
+                </div>
+              )}
+
+              {currentNodeDef.type === "inference" && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                    Uses system env vars: INFERENCE_HOST, INFERENCE_PORT
+                  </p>
+                  <div>
+                    <Label className="text-sm text-foreground">Prompt Expression</Label>
+                    <div className="mt-1 rounded border border-border overflow-hidden">
+                      <Editor
+                        height={80}
+                        defaultLanguage="javascript"
+                        value={currentNodeDef.promptExpression ?? "input.prompt || JSON.stringify(input)"}
+                        onChange={(v) => updateNodeDef({ promptExpression: v ?? "" })}
+                        options={{ minimap: { enabled: false } }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      JS expression using: input, workflowInput, stepOutputs, context
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-sm text-foreground">Temperature</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="2"
+                        step="0.1"
+                        className="mt-1 h-9 bg-background border-border"
+                        value={currentNodeDef.temperature ?? 0}
+                        onChange={(e) => updateNodeDef({ temperature: parseFloat(e.target.value) || 0 })}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-foreground">Seed</Label>
+                      <Input
+                        type="number"
+                        className="mt-1 h-9 bg-background border-border"
+                        value={currentNodeDef.seed ?? 42}
+                        onChange={(e) => updateNodeDef({ seed: parseInt(e.target.value) || 42 })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-sm text-foreground">Top P</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        className="mt-1 h-9 bg-background border-border"
+                        value={currentNodeDef.topP ?? 1.0}
+                        onChange={(e) => updateNodeDef({ topP: parseFloat(e.target.value) || 1.0 })}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm text-foreground">Top K</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        className="mt-1 h-9 bg-background border-border"
+                        value={currentNodeDef.topK ?? 0}
+                        onChange={(e) => updateNodeDef({ topK: parseInt(e.target.value) || 0 })}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground p-2 bg-muted/50 rounded">
+                    Calls /generate endpoint. Returns: {"{ output: string, prompt: string, parameters: {...}, endpoint: string }"}
+                  </p>
+                </div>
+              )}
+
+              {currentNodeDef.type === "inline" && (
+                <div>
+                  <Label className="text-sm text-foreground">Code (main(input, context))</Label>
+                  <div className="mt-1 rounded border border-border overflow-hidden">
+                    <Editor
+                      height={200}
+                      defaultLanguage="typescript"
+                      value={
+                        currentNodeDef.code ??
+                        "export async function main(input, context){return input;}"
+                      }
+                      onChange={(v) => updateNodeDef({ code: v ?? "" })}
+                      options={{ minimap: { enabled: false } }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label className="text-sm text-foreground">Input Mapping (JS expression)</Label>
+                <div className="mt-1 rounded border border-border overflow-hidden">
+                  <Editor
+                    height={80}
+                    defaultLanguage="javascript"
+                    value={currentNodeDef.inputMapping ?? "({})"}
+                    onChange={(v) => updateNodeDef({ inputMapping: v ?? "" })}
+                    options={{ minimap: { enabled: false } }}
+                  />
+                </div>
+              </div>
+
+              <SchemaEditor
+                title="Input Schema"
+                schema={
+                  currentNodeDef.inputSchema ?? {
+                    type: "object",
+                    properties: {},
+                    required: [],
+                  }
+                }
+                onChange={(s) => updateNodeDef({ inputSchema: s })}
+              />
+              <SchemaEditor
+                title="Output Schema"
+                schema={
+                  currentNodeDef.outputSchema ?? {
+                    type: "object",
+                    properties: {},
+                    required: [],
+                  }
+                }
+                onChange={(s) => updateNodeDef({ outputSchema: s })}
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-border flex justify-end">
+              <Button onClick={() => setSelectedNode(null)}>
+                Done
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Select Tool Modal */}
       <SelectToolModal
