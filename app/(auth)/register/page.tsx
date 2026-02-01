@@ -39,7 +39,7 @@ export default function RegisterPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token: "mock-auth-token" }),
         });
-        router.replace("/links");
+        router.replace("/workflows");
       }
     } catch {
       setError(isCognitoConfigured ? "Sign up failed. Email may already be in use." : "Sign up failed. Please try again.");

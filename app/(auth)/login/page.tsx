@@ -26,7 +26,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams.get("from") ?? "/links";
+  const from = searchParams.get("from") ?? "/workflows";
 
   const handleLogin = async () => {
     setLoading(true);

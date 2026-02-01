@@ -102,32 +102,11 @@ export default function ToolsPage() {
 
       {/* Hero Section with Gradient Background */}
       <div className="bg-gradient-to-r from-primary/90 to-accent/90 relative overflow-hidden">
-        {/* Secondary Navigation */}
-        <div className="relative border-b border-primary-foreground/10">
-          <div className="container mx-auto px-6">
-            <div className="flex items-center justify-between h-14">
-              <h1 className="text-xl font-semibold text-primary-foreground">
-                <span className="font-light">Reusable</span> Tools Registry
-              </h1>
-              <nav className="flex items-center gap-6 text-sm">
-                <span className="text-primary-foreground font-medium">
-                  Tools
-                </span>
-                <span className="text-primary-foreground/50">|</span>
-                <span className="text-primary-foreground/70">
-                  {tools.length} registered
-                </span>
-              </nav>
-            </div>
-          </div>
-        </div>
-
         {/* Page Header */}
         <div className="relative container mx-auto px-6 py-10">
           <div className="flex items-start justify-between">
             <div>
               <h2 className="text-3xl font-bold text-primary-foreground mb-2 flex items-center gap-3">
-                <Wrench className="h-8 w-8" />
                 Tools Registry
               </h2>
               <p className="text-primary-foreground/70">

@@ -18,7 +18,7 @@ const navItems = [
   { href: "/deterministic-inference", label: "Determinisme", icon: Calculator },
   //{ href: "/rl-studio", label: "RL", icon: Workflow },
 
-  { href: "/workflow-builder", label: "Builder", icon: GitBranch },
+  //{ href: "/workflow-builder", label: "Builder", icon: GitBranch },
   //{ href: "/function-registry", label: "Functions", icon: Zap },
   //{ href: "/skills-registry", label: "Skills", icon: Sparkles },
   //{ href: "/bixbench", label: "BixBench", icon: FlaskConical },
