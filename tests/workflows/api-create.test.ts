@@ -7,11 +7,11 @@ vi.mock("@/lib/auth.server", () => ({
 }));
 
 vi.mock("@/lib/db/queries", () => ({
-  createAIWorkflow: vi.fn(),
+  createOrUpdateWorkflowWithVersioning: vi.fn(),
 }));
 
 import { getAuthUser } from "@/lib/auth.server";
-import { createAIWorkflow } from "@/lib/db/queries";
+import { createOrUpdateWorkflowWithVersioning } from "@/lib/db/queries";
 
 describe("POST /api/ai/workflows/create", () => {
   beforeEach(() => {
@@ -151,7 +151,7 @@ describe("POST /api/ai/workflows/create", () => {
 
       expect(response.status).toBe(400);
       expect(data.error).toBe(
-        "Invalid node type: invalid. Must be one of: tool, inline, memory"
+        "Invalid node type: invalid. Must be one of: tool, inline, memory, llm, inference"
       );
     });
 
@@ -226,7 +226,7 @@ describe("POST /api/ai/workflows/create", () => {
     });
 
     it("should create workflow with minimal definition", async () => {
-      vi.mocked(createAIWorkflow).mockResolvedValueOnce("workflow-123");
+      vi.mocked(createOrUpdateWorkflowWithVersioning).mockResolvedValueOnce({ id: "workflow-123", version: 1 });
 
       const response = await POST(
         createRequest({
@@ -239,11 +239,12 @@ describe("POST /api/ai/workflows/create", () => {
       expect(response.status).toBe(200);
       expect(data.ok).toBe(true);
       expect(data.workflowId).toBe("workflow-123");
+      expect(data.version).toBe(1);
       expect(data.message).toBe("AI workflow created successfully");
     });
 
     it("should create workflow with full definition", async () => {
-      vi.mocked(createAIWorkflow).mockResolvedValueOnce("workflow-456");
+      vi.mocked(createOrUpdateWorkflowWithVersioning).mockResolvedValueOnce({ id: "workflow-456", version: 1 });
 
       const response = await POST(
         createRequest({
@@ -265,7 +266,7 @@ describe("POST /api/ai/workflows/create", () => {
 
       expect(response.status).toBe(200);
       expect(data.ok).toBe(true);
-      expect(createAIWorkflow).toHaveBeenCalledWith({
+      expect(createOrUpdateWorkflowWithVersioning).toHaveBeenCalledWith({
         id: "custom-id",
         owner: "user-123",
         name: "Full Workflow",
@@ -283,7 +284,7 @@ describe("POST /api/ai/workflows/create", () => {
     });
 
     it("should accept all valid node types", async () => {
-      vi.mocked(createAIWorkflow).mockResolvedValueOnce("workflow-789");
+      vi.mocked(createOrUpdateWorkflowWithVersioning).mockResolvedValueOnce({ id: "workflow-789", version: 1 });
 
       const response = await POST(
         createRequest({
@@ -308,7 +309,7 @@ describe("POST /api/ai/workflows/create", () => {
   describe("error handling", () => {
     it("should return 500 if database operation fails", async () => {
       vi.mocked(getAuthUser).mockResolvedValue({ sub: "user-123" });
-      vi.mocked(createAIWorkflow).mockRejectedValueOnce(
+      vi.mocked(createOrUpdateWorkflowWithVersioning).mockRejectedValueOnce(
         new Error("Database connection failed")
       );
 

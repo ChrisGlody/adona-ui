@@ -12,6 +12,7 @@ import {
   Code,
   Globe,
   Zap,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,6 +34,7 @@ export interface Tool {
   implementation: string | null;
   lambdaArn?: string | null;
   owner?: string | null;
+  currentVersion?: number;
   createdAt: string;
   updatedAt?: string;
 }
@@ -44,6 +46,7 @@ interface ToolsTableProps {
   onDelete?: (tool: Tool) => void;
   onRun?: (tool: Tool) => void;
   onView?: (tool: Tool) => void;
+  onViewHistory?: (tool: Tool) => void;
 }
 
 function formatDateTime(dateString: string): string {
@@ -78,6 +81,7 @@ export function ToolsTable({
   onDelete,
   onRun,
   onView,
+  onViewHistory,
 }: ToolsTableProps) {
   const [selectedRows, setSelectedRows] = useState<string[]>([]);
   const [rowsPerPage, setRowsPerPage] = useState("10");
@@ -227,6 +231,17 @@ export function ToolsTable({
                           title="View details"
                         >
                           <Search className="h-4 w-4 text-blue-600" />
+                        </Button>
+                      )}
+                      {onViewHistory && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 border-purple-200 hover:bg-purple-50 bg-transparent"
+                          onClick={() => onViewHistory(tool)}
+                          title="View version history"
+                        >
+                          <History className="h-4 w-4 text-purple-600" />
                         </Button>
                       )}
                       {onEdit && (

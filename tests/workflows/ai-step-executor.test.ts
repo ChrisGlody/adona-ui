@@ -352,7 +352,7 @@ describe("ai-step-executor", () => {
         };
 
         await expect(executeStep(step, {}, baseContext)).rejects.toThrow(
-          "Memory step missing operation or queryExpression"
+          "Step execution failed: Memory step missing operation"
         );
       });
 
@@ -365,7 +365,7 @@ describe("ai-step-executor", () => {
         };
 
         await expect(executeStep(step, {}, baseContext)).rejects.toThrow(
-          "Memory step missing operation or queryExpression"
+          "Step execution failed: Memory search operation missing queryExpression"
         );
       });
 

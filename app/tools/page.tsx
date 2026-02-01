@@ -9,6 +9,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ToolsTable, type Tool } from "@/components/tools/tools-table";
 import { CreateToolModal } from "@/components/tools/create-tool-modal";
 import { RunToolModal } from "@/components/tools/run-tool-modal";
+import { ToolVersionModal } from "@/components/tools/tool-version-modal";
 
 export default function ToolsPage() {
   const [loading, setLoading] = useState(true);
@@ -16,6 +17,7 @@ export default function ToolsPage() {
   const [fetchingTools, setFetchingTools] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [runModalOpen, setRunModalOpen] = useState(false);
+  const [versionModalOpen, setVersionModalOpen] = useState(false);
   const [selectedTool, setSelectedTool] = useState<Tool | null>(null);
   const router = useRouter();
 
@@ -56,6 +58,11 @@ export default function ToolsPage() {
   const handleRunTool = (tool: Tool) => {
     setSelectedTool(tool);
     setRunModalOpen(true);
+  };
+
+  const handleViewHistory = (tool: Tool) => {
+    setSelectedTool(tool);
+    setVersionModalOpen(true);
   };
 
   const handleDeleteTool = async (tool: Tool) => {
@@ -152,6 +159,7 @@ export default function ToolsPage() {
             loading={fetchingTools}
             onRun={handleRunTool}
             onDelete={handleDeleteTool}
+            onViewHistory={handleViewHistory}
           />
         </div>
       </main>
@@ -181,6 +189,19 @@ export default function ToolsPage() {
           setSelectedTool(null);
         }}
       />
+      {selectedTool && (
+        <ToolVersionModal
+          open={versionModalOpen}
+          onClose={() => {
+            setVersionModalOpen(false);
+            setSelectedTool(null);
+          }}
+          toolId={selectedTool.id}
+          toolName={selectedTool.name}
+          currentVersion={selectedTool.currentVersion ?? 1}
+          onRestored={fetchTools}
+        />
+      )}
     </div>
   );
 }

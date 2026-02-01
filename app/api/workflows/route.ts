@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth.server";
-import { createAIWorkflow } from "@/lib/db/queries";
-import { v4 as uuidv4 } from "uuid";
+import { createOrUpdateWorkflowWithVersioning } from "@/lib/db/queries";
 
 export async function POST(req: Request) {
   const user = await getAuthUser();
@@ -9,16 +8,15 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, name, description, executionEnv, inputSchema, outputSchema, envVars, definition } = body;
+    const { id, name, description, executionEnv, inputSchema, outputSchema, envVars, definition, changeMessage } = body;
     if (!name || !definition) {
       return NextResponse.json({ error: "Missing name or definition" }, { status: 400 });
     }
 
-    const wfId = id ?? uuidv4();
     const env = executionEnv ?? "db";
 
-    await createAIWorkflow({
-      id: wfId,
+    const result = await createOrUpdateWorkflowWithVersioning({
+      id,
       owner: user.sub,
       name,
       description,
@@ -26,9 +24,11 @@ export async function POST(req: Request) {
       outputSchema,
       envVars,
       definition,
+      executionEnv: env,
+      changeMessage,
     });
 
-    return NextResponse.json({ ok: true, id: wfId, executionEnv: env });
+    return NextResponse.json({ ok: true, id: result.id, version: result.version, executionEnv: env });
   } catch (e: unknown) {
     console.error("Error saving workflow:", e);
     return NextResponse.json(

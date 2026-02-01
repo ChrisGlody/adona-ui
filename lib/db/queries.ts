@@ -6,6 +6,8 @@ import {
   workflows,
   workflowRuns,
   workflowRunSteps,
+  workflowVersions,
+  toolVersions,
 } from "./schema";
 import { and, asc, desc, eq, inArray, count, sql } from "drizzle-orm";
 import { generateId } from "ai";
@@ -516,4 +518,665 @@ export async function createOrUpdateStepExecution({
         )
       );
   }
+}
+
+// ============================================================
+// VERSIONING FUNCTIONS
+// ============================================================
+
+// Create a workflow version snapshot
+export async function createWorkflowVersion({
+  workflowId,
+  version,
+  snapshot,
+  changedBy,
+  changeType,
+  changeMessage,
+}: {
+  workflowId: string;
+  version: number;
+  snapshot: {
+    name: string;
+    description?: string | null;
+    definition: object;
+    inputSchema?: unknown;
+    outputSchema?: unknown;
+    envVars?: unknown;
+    executionEnv?: string;
+  };
+  changedBy: string;
+  changeType: "create" | "update" | "restore";
+  changeMessage?: string;
+}) {
+  const id = generateId();
+  await db.insert(workflowVersions).values({
+    id,
+    workflowId,
+    version,
+    name: snapshot.name,
+    description: snapshot.description ?? null,
+    definition: snapshot.definition,
+    inputSchema: (snapshot.inputSchema as object) ?? null,
+    outputSchema: (snapshot.outputSchema as object) ?? null,
+    envVars: (snapshot.envVars as object) ?? null,
+    executionEnv: snapshot.executionEnv ?? "db",
+    changedBy,
+    changeType,
+    changeMessage: changeMessage ?? null,
+    createdAt: new Date(),
+  });
+  return id;
+}
+
+// Get all versions for a workflow
+export async function getWorkflowVersions(workflowId: string, owner: string) {
+  // First verify ownership
+  const workflow = await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(and(eq(workflows.id, workflowId), eq(workflows.owner, owner)))
+    .limit(1);
+
+  if (workflow.length === 0) return null;
+
+  return db
+    .select()
+    .from(workflowVersions)
+    .where(eq(workflowVersions.workflowId, workflowId))
+    .orderBy(desc(workflowVersions.version));
+}
+
+// Get a specific workflow version
+export async function getWorkflowVersion(
+  workflowId: string,
+  version: number,
+  owner: string
+) {
+  // Verify ownership
+  const workflow = await db
+    .select({ id: workflows.id })
+    .from(workflows)
+    .where(and(eq(workflows.id, workflowId), eq(workflows.owner, owner)))
+    .limit(1);
+
+  if (workflow.length === 0) return null;
+
+  const versions = await db
+    .select()
+    .from(workflowVersions)
+    .where(
+      and(
+        eq(workflowVersions.workflowId, workflowId),
+        eq(workflowVersions.version, version)
+      )
+    )
+    .limit(1);
+
+  return versions[0] ?? null;
+}
+
+// Compare two workflow versions
+export async function compareWorkflowVersions(
+  workflowId: string,
+  versionA: number,
+  versionB: number,
+  owner: string
+) {
+  const [a, b] = await Promise.all([
+    getWorkflowVersion(workflowId, versionA, owner),
+    getWorkflowVersion(workflowId, versionB, owner),
+  ]);
+  return { versionA: a, versionB: b };
+}
+
+// Helper to normalize workflow definition for comparison
+// Strips out layout-only fields (x, y positions) that shouldn't trigger new versions
+function normalizeDefinitionForComparison(definition: unknown): string {
+  if (!definition || typeof definition !== "object") return JSON.stringify(definition);
+
+  const def = definition as { nodes?: unknown[]; edges?: unknown[] };
+  const normalized = {
+    nodes: (def.nodes || []).map((node: unknown) => {
+      if (!node || typeof node !== "object") return node;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { x, y, ...rest } = node as Record<string, unknown>;
+      return rest;
+    }),
+    edges: def.edges || [],
+  };
+
+  // Sort keys for consistent comparison
+  return JSON.stringify(normalized, Object.keys(normalized).sort());
+}
+
+// Helper to check if workflow content has changed
+function hasWorkflowContentChanged(
+  existing: {
+    name: string;
+    description: string | null;
+    definition: unknown;
+    inputSchema: unknown;
+    outputSchema: unknown;
+    envVars: unknown;
+    executionEnv: string;
+  },
+  updated: {
+    name: string;
+    description?: string | null;
+    definition: object;
+    inputSchema?: unknown;
+    outputSchema?: unknown;
+    envVars?: unknown;
+    executionEnv: string;
+  }
+): boolean {
+  if (existing.name !== updated.name) return true;
+  if ((existing.description ?? null) !== (updated.description ?? null)) return true;
+  if (existing.executionEnv !== updated.executionEnv) return true;
+  // Compare definitions without layout fields (x, y positions)
+  if (normalizeDefinitionForComparison(existing.definition) !== normalizeDefinitionForComparison(updated.definition)) return true;
+  if (JSON.stringify(existing.inputSchema ?? null) !== JSON.stringify(updated.inputSchema ?? null)) return true;
+  if (JSON.stringify(existing.outputSchema ?? null) !== JSON.stringify(updated.outputSchema ?? null)) return true;
+  if (JSON.stringify(existing.envVars ?? null) !== JSON.stringify(updated.envVars ?? null)) return true;
+  return false;
+}
+
+// Create or update workflow with versioning
+// Only creates a new version when content actually changes
+export async function createOrUpdateWorkflowWithVersioning({
+  id,
+  owner,
+  name,
+  description,
+  definition,
+  inputSchema,
+  outputSchema,
+  envVars,
+  executionEnv,
+  changeMessage,
+}: {
+  id?: string;
+  owner: string;
+  name: string;
+  description?: string | null;
+  definition: object;
+  inputSchema?: unknown;
+  outputSchema?: unknown;
+  envVars?: unknown;
+  executionEnv?: string;
+  changeMessage?: string;
+}) {
+  const wfId = id ?? generateId();
+  const env = executionEnv ?? "db";
+
+  // Check if workflow exists and get full data for comparison
+  const existing = await db
+    .select()
+    .from(workflows)
+    .where(eq(workflows.id, wfId))
+    .limit(1);
+
+  const isUpdate = existing.length > 0;
+
+  // For updates, check if content actually changed
+  if (isUpdate) {
+    const current = existing[0];
+    const hasChanges = hasWorkflowContentChanged(
+      {
+        name: current.name,
+        description: current.description,
+        definition: current.definition,
+        inputSchema: current.inputSchema,
+        outputSchema: current.outputSchema,
+        envVars: current.envVars,
+        executionEnv: current.executionEnv,
+      },
+      { name, description, definition, inputSchema, outputSchema, envVars, executionEnv: env }
+    );
+
+    // No changes - return existing version without creating new snapshot
+    if (!hasChanges) {
+      return { id: wfId, version: current.definitionVersion };
+    }
+  }
+
+  const newVersion = isUpdate ? existing[0].definitionVersion + 1 : 1;
+
+  // Create version snapshot (only when there are actual changes)
+  await createWorkflowVersion({
+    workflowId: wfId,
+    version: newVersion,
+    snapshot: {
+      name,
+      description,
+      definition,
+      inputSchema,
+      outputSchema,
+      envVars,
+      executionEnv: env,
+    },
+    changedBy: owner,
+    changeType: isUpdate ? "update" : "create",
+    changeMessage,
+  });
+
+  // Update main workflow record
+  const row = {
+    id: wfId,
+    owner,
+    name,
+    description: description ?? null,
+    definitionVersion: newVersion,
+    definition,
+    executionEnv: env,
+    inputSchema: (inputSchema as object) ?? null,
+    outputSchema: (outputSchema as object) ?? null,
+    envVars: (envVars as object) ?? null,
+    updatedAt: new Date(),
+  } as Record<string, unknown>;
+
+  if (isUpdate) {
+    await db.update(workflows).set(row).where(eq(workflows.id, wfId));
+  } else {
+    (row as Record<string, unknown>).createdAt = new Date();
+    await db.insert(workflows).values(row as typeof workflows.$inferInsert);
+  }
+
+  return { id: wfId, version: newVersion };
+}
+
+// Restore a workflow to a previous version
+export async function restoreWorkflowVersion(
+  workflowId: string,
+  targetVersion: number,
+  owner: string,
+  changeMessage?: string
+) {
+  // Get the target version
+  const target = await getWorkflowVersion(workflowId, targetVersion, owner);
+  if (!target) return null;
+
+  // Get current version number
+  const current = await db
+    .select({ version: workflows.definitionVersion })
+    .from(workflows)
+    .where(eq(workflows.id, workflowId))
+    .limit(1);
+
+  if (current.length === 0) return null;
+
+  const newVersion = current[0].version + 1;
+
+  // Create new version from restore
+  await createWorkflowVersion({
+    workflowId,
+    version: newVersion,
+    snapshot: {
+      name: target.name,
+      description: target.description,
+      definition: target.definition as object,
+      inputSchema: target.inputSchema,
+      outputSchema: target.outputSchema,
+      envVars: target.envVars,
+      executionEnv: target.executionEnv,
+    },
+    changedBy: owner,
+    changeType: "restore",
+    changeMessage: changeMessage ?? `Restored from version ${targetVersion}`,
+  });
+
+  // Update main workflow
+  await db
+    .update(workflows)
+    .set({
+      name: target.name,
+      description: target.description,
+      definition: target.definition,
+      inputSchema: target.inputSchema,
+      outputSchema: target.outputSchema,
+      envVars: target.envVars,
+      executionEnv: target.executionEnv,
+      definitionVersion: newVersion,
+      updatedAt: new Date(),
+    })
+    .where(eq(workflows.id, workflowId));
+
+  return { id: workflowId, version: newVersion };
+}
+
+// ============================================================
+// TOOL VERSIONING FUNCTIONS
+// ============================================================
+
+// Create a tool version snapshot
+export async function createToolVersion({
+  toolId,
+  version,
+  snapshot,
+  changedBy,
+  changeType,
+  changeMessage,
+}: {
+  toolId: string;
+  version: number;
+  snapshot: {
+    name: string;
+    description?: string | null;
+    type: string;
+    inputSchema: object;
+    outputSchema?: unknown;
+    implementation?: string | null;
+    lambdaArn?: string | null;
+    executionEnv?: string;
+  };
+  changedBy: string;
+  changeType: "create" | "update" | "restore";
+  changeMessage?: string;
+}) {
+  const id = generateId();
+  await db.insert(toolVersions).values({
+    id,
+    toolId,
+    version,
+    name: snapshot.name,
+    description: snapshot.description ?? null,
+    type: snapshot.type,
+    inputSchema: snapshot.inputSchema,
+    outputSchema: (snapshot.outputSchema as object) ?? null,
+    implementation: snapshot.implementation ?? null,
+    lambdaArn: snapshot.lambdaArn ?? null,
+    executionEnv: snapshot.executionEnv ?? "db",
+    changedBy,
+    changeType,
+    changeMessage: changeMessage ?? null,
+    createdAt: new Date(),
+  });
+  return id;
+}
+
+// Get all versions for a tool
+export async function getToolVersions(toolId: string, owner: string) {
+  const tool = await db
+    .select({ id: tools.id })
+    .from(tools)
+    .where(and(eq(tools.id, toolId), eq(tools.owner, owner)))
+    .limit(1);
+
+  if (tool.length === 0) return null;
+
+  return db
+    .select()
+    .from(toolVersions)
+    .where(eq(toolVersions.toolId, toolId))
+    .orderBy(desc(toolVersions.version));
+}
+
+// Get a specific tool version
+export async function getToolVersion(
+  toolId: string,
+  version: number,
+  owner: string
+) {
+  const tool = await db
+    .select({ id: tools.id })
+    .from(tools)
+    .where(and(eq(tools.id, toolId), eq(tools.owner, owner)))
+    .limit(1);
+
+  if (tool.length === 0) return null;
+
+  const versions = await db
+    .select()
+    .from(toolVersions)
+    .where(
+      and(eq(toolVersions.toolId, toolId), eq(toolVersions.version, version))
+    )
+    .limit(1);
+
+  return versions[0] ?? null;
+}
+
+// Compare two tool versions
+export async function compareToolVersions(
+  toolId: string,
+  versionA: number,
+  versionB: number,
+  owner: string
+) {
+  const [a, b] = await Promise.all([
+    getToolVersion(toolId, versionA, owner),
+    getToolVersion(toolId, versionB, owner),
+  ]);
+  return { versionA: a, versionB: b };
+}
+
+// Helper to check if tool content has changed
+function hasToolContentChanged(
+  existing: {
+    name: string;
+    description: string | null;
+    type: string;
+    inputSchema: unknown;
+    outputSchema: unknown;
+    implementation: string | null;
+    lambdaArn: string | null;
+    executionEnv: string;
+  },
+  updated: {
+    name: string;
+    description?: string | null;
+    type: string;
+    inputSchema: object;
+    outputSchema?: unknown;
+    implementation?: string | null;
+    lambdaArn?: string | null;
+    executionEnv: string;
+  }
+): boolean {
+  if (existing.name !== updated.name) return true;
+  if ((existing.description ?? null) !== (updated.description ?? null)) return true;
+  if (existing.type !== updated.type) return true;
+  if (existing.executionEnv !== updated.executionEnv) return true;
+  if ((existing.implementation ?? null) !== (updated.implementation ?? null)) return true;
+  if ((existing.lambdaArn ?? null) !== (updated.lambdaArn ?? null)) return true;
+  if (JSON.stringify(existing.inputSchema) !== JSON.stringify(updated.inputSchema)) return true;
+  if (JSON.stringify(existing.outputSchema ?? null) !== JSON.stringify(updated.outputSchema ?? null)) return true;
+  return false;
+}
+
+// Create or update tool with versioning
+// Only creates a new version when content actually changes
+export async function createOrUpdateToolWithVersioning({
+  id,
+  owner,
+  name,
+  description,
+  type,
+  inputSchema,
+  outputSchema,
+  implementation,
+  lambdaArn,
+  executionEnv,
+  changeMessage,
+}: {
+  id?: string;
+  owner: string;
+  name: string;
+  description?: string | null;
+  type: string;
+  inputSchema: object;
+  outputSchema?: unknown;
+  implementation?: string | null;
+  lambdaArn?: string | null;
+  executionEnv?: string;
+  changeMessage?: string;
+}) {
+  const toolId = id ?? generateId();
+  const env = executionEnv ?? "db";
+
+  // Check if tool exists and get full data for comparison
+  const existing = await db
+    .select()
+    .from(tools)
+    .where(eq(tools.id, toolId))
+    .limit(1);
+
+  const isUpdate = existing.length > 0;
+
+  // For updates, check if content actually changed
+  if (isUpdate) {
+    const current = existing[0];
+    const hasChanges = hasToolContentChanged(
+      {
+        name: current.name,
+        description: current.description,
+        type: current.type,
+        inputSchema: current.inputSchema,
+        outputSchema: current.outputSchema,
+        implementation: current.implementation,
+        lambdaArn: current.lambdaArn,
+        executionEnv: current.executionEnv,
+      },
+      { name, description, type, inputSchema, outputSchema, implementation, lambdaArn, executionEnv: env }
+    );
+
+    // No changes - return existing version without creating new snapshot
+    if (!hasChanges) {
+      return { id: toolId, version: current.currentVersion ?? 1 };
+    }
+  }
+
+  const newVersion = isUpdate ? (existing[0].currentVersion ?? 1) + 1 : 1;
+
+  // Create version snapshot (only when there are actual changes)
+  await createToolVersion({
+    toolId,
+    version: newVersion,
+    snapshot: {
+      name,
+      description,
+      type,
+      inputSchema,
+      outputSchema,
+      implementation,
+      lambdaArn,
+      executionEnv: env,
+    },
+    changedBy: owner,
+    changeType: isUpdate ? "update" : "create",
+    changeMessage,
+  });
+
+  // Update main tool record
+  const row = {
+    id: toolId,
+    owner,
+    name,
+    description: description ?? null,
+    type,
+    inputSchema,
+    outputSchema: (outputSchema as object) ?? null,
+    implementation: implementation ?? null,
+    lambdaArn: lambdaArn ?? null,
+    executionEnv: env,
+    currentVersion: newVersion,
+    updatedAt: new Date(),
+  } as Record<string, unknown>;
+
+  if (isUpdate) {
+    await db.update(tools).set(row).where(eq(tools.id, toolId));
+  } else {
+    (row as Record<string, unknown>).createdAt = new Date();
+    await db.insert(tools).values(row as typeof tools.$inferInsert);
+  }
+
+  return { id: toolId, version: newVersion };
+}
+
+// Restore a tool to a previous version
+export async function restoreToolVersion(
+  toolId: string,
+  targetVersion: number,
+  owner: string,
+  changeMessage?: string
+) {
+  const target = await getToolVersion(toolId, targetVersion, owner);
+  if (!target) return null;
+
+  const current = await db
+    .select({ version: tools.currentVersion })
+    .from(tools)
+    .where(eq(tools.id, toolId))
+    .limit(1);
+
+  if (current.length === 0) return null;
+
+  const newVersion = (current[0].version ?? 1) + 1;
+
+  await createToolVersion({
+    toolId,
+    version: newVersion,
+    snapshot: {
+      name: target.name,
+      description: target.description,
+      type: target.type,
+      inputSchema: target.inputSchema as object,
+      outputSchema: target.outputSchema,
+      implementation: target.implementation,
+      lambdaArn: target.lambdaArn,
+      executionEnv: target.executionEnv,
+    },
+    changedBy: owner,
+    changeType: "restore",
+    changeMessage: changeMessage ?? `Restored from version ${targetVersion}`,
+  });
+
+  await db
+    .update(tools)
+    .set({
+      name: target.name,
+      description: target.description,
+      type: target.type,
+      inputSchema: target.inputSchema,
+      outputSchema: target.outputSchema,
+      implementation: target.implementation,
+      lambdaArn: target.lambdaArn,
+      executionEnv: target.executionEnv,
+      currentVersion: newVersion,
+      updatedAt: new Date(),
+    })
+    .where(eq(tools.id, toolId));
+
+  return { id: toolId, version: newVersion };
+}
+
+// Create workflow run with version tracking
+export async function createWorkflowRunWithVersion({
+  workflowId,
+  owner,
+  input,
+}: {
+  workflowId: string;
+  owner: string;
+  input: unknown;
+}) {
+  // Get current workflow version
+  const workflow = await db
+    .select({ version: workflows.definitionVersion })
+    .from(workflows)
+    .where(eq(workflows.id, workflowId))
+    .limit(1);
+
+  const id = generateId();
+  await db.insert(workflowRuns).values({
+    id,
+    workflowId,
+    owner,
+    status: "queued",
+    workflowVersion: workflow[0]?.version ?? 1,
+    input: input as object,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+  return id;
 }

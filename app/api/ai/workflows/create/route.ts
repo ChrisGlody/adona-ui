@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth.server";
-import { createAIWorkflow } from "@/lib/db/queries";
+import { createOrUpdateWorkflowWithVersioning } from "@/lib/db/queries";
 
 export async function POST(req: Request) {
   const user = await getAuthUser();
@@ -8,7 +8,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { id, name, description, inputSchema, outputSchema, definition } = body;
+    const { id, name, description, inputSchema, outputSchema, definition, changeMessage } = body;
 
     if (!name || !definition) {
       return NextResponse.json(
@@ -35,9 +35,9 @@ export async function POST(req: Request) {
           { status: 400 }
         );
       }
-      if (!["tool", "inline", "memory"].includes(node.type)) {
+      if (!["tool", "inline", "memory", "llm", "inference"].includes(node.type)) {
         return NextResponse.json(
-          { error: `Invalid node type: ${node.type}. Must be one of: tool, inline, memory` },
+          { error: `Invalid node type: ${node.type}. Must be one of: tool, inline, memory, llm, inference` },
           { status: 400 }
         );
       }
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const workflowId = await createAIWorkflow({
+    const result = await createOrUpdateWorkflowWithVersioning({
       id,
       owner: user.sub,
       name,
@@ -66,11 +66,13 @@ export async function POST(req: Request) {
       inputSchema: inputSchema ?? null,
       outputSchema: outputSchema ?? null,
       definition,
+      changeMessage,
     });
 
     return NextResponse.json({
       ok: true,
-      workflowId,
+      workflowId: result.id,
+      version: result.version,
       message: "AI workflow created successfully",
     });
   } catch (error) {

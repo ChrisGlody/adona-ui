@@ -30,6 +30,7 @@ import Editor from "@monaco-editor/react";
 import { SchemaEditor, type JsonSchema } from "@/components/workflows/schema-editor";
 import { SelectToolModal, type Tool as SelectableTool } from "@/components/tools/select-tool-modal";
 import CustomNode from "@/components/workflows/custom-node";
+import { VersionHistoryPanel, VersionCompareModal, RestoreConfirmModal } from "@/components/versioning";
 
 type EnvVar = {
   key: string;
@@ -42,6 +43,7 @@ type WorkflowDef = {
   name: string;
   description?: string | null;
   executionEnv?: string | null;
+  definitionVersion?: number;
   inputSchema?: JsonSchema | null;
   outputSchema?: JsonSchema | null;
   envVars?: EnvVar[] | null;
@@ -103,6 +105,9 @@ export default function EditWorkflowPage() {
   const [generating, setGenerating] = useState(false);
   const [showSecrets, setShowSecrets] = useState<Record<number, boolean>>({});
   const [selectToolModalOpen, setSelectToolModalOpen] = useState(false);
+  const [compareVersions, setCompareVersions] = useState<{ a: number; b: number } | null>(null);
+  const [restoreVersion, setRestoreVersion] = useState<number | null>(null);
+  const [restoring, setRestoring] = useState(false);
 
   // Register custom node types
   const nodeTypes = useMemo(() => ({ custom: CustomNode }), []);
@@ -674,6 +679,17 @@ export default function EditWorkflowPage() {
                   </div>
                 )}
               </Card>
+
+              {/* Version History */}
+              {wf && (
+                <VersionHistoryPanel
+                  entityType="workflow"
+                  entityId={id}
+                  currentVersion={wf.definitionVersion ?? 1}
+                  onRestore={(v) => setRestoreVersion(v)}
+                  onCompare={(a, b) => setCompareVersions({ a, b })}
+                />
+              )}
             </div>
 
             {/* Center - ReactFlow */}
@@ -1057,6 +1073,44 @@ export default function EditWorkflowPage() {
         onClose={() => setSelectToolModalOpen(false)}
         onSelect={handleToolSelected}
       />
+
+      {/* Version Compare Modal */}
+      {compareVersions && (
+        <VersionCompareModal
+          open={!!compareVersions}
+          onClose={() => setCompareVersions(null)}
+          entityType="workflow"
+          entityId={id}
+          versionA={compareVersions.a}
+          versionB={compareVersions.b}
+        />
+      )}
+
+      {/* Restore Version Modal */}
+      {restoreVersion !== null && (
+        <RestoreConfirmModal
+          open={restoreVersion !== null}
+          onClose={() => setRestoreVersion(null)}
+          onConfirm={async (message) => {
+            setRestoring(true);
+            try {
+              await fetch(`/api/workflows/${id}/versions/${restoreVersion}/restore`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ changeMessage: message }),
+              });
+              // Reload the page to get the restored version
+              window.location.reload();
+            } catch (error) {
+              console.error("Error restoring version:", error);
+              setRestoring(false);
+            }
+          }}
+          version={restoreVersion}
+          entityType="workflow"
+          restoring={restoring}
+        />
+      )}
     </div>
   );
 }

@@ -39,19 +39,27 @@ export const chatMessages = pgTable(
   })
 );
 
-export const tools = pgTable("tools", {
-  id: text("id").primaryKey(),
-  name: varchar("name", { length: 160 }).notNull(),
-  description: text("description"),
-  type: varchar("type", { length: 20 }).notNull(),
-  inputSchema: jsonb("input_schema").notNull(),
-  outputSchema: jsonb("output_schema"),
-  implementation: text("implementation"),
-  lambdaArn: text("lambda_arn"),
-  executionEnv: varchar("execution_env", { length: 10 }).default("db").notNull(),
-  owner: varchar("owner", { length: 160 }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const tools = pgTable(
+  "tools",
+  {
+    id: text("id").primaryKey(),
+    name: varchar("name", { length: 160 }).notNull(),
+    description: text("description"),
+    type: varchar("type", { length: 20 }).notNull(),
+    inputSchema: jsonb("input_schema").notNull(),
+    outputSchema: jsonb("output_schema"),
+    implementation: text("implementation"),
+    lambdaArn: text("lambda_arn"),
+    executionEnv: varchar("execution_env", { length: 10 }).default("db").notNull(),
+    owner: varchar("owner", { length: 160 }),
+    currentVersion: integer("current_version").default(1).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    ownerIdx: index("tools_owner_idx").on(t.owner),
+  })
+);
 
 export const workflowStatusEnum = pgEnum("workflow_status", [
   "queued",
@@ -99,6 +107,7 @@ export const workflowRuns = pgTable(
     workflowId: text("workflow_id").notNull(),
     owner: varchar("owner", { length: 160 }).notNull(),
     status: workflowStatusEnum("status").default("queued").notNull(),
+    workflowVersion: integer("workflow_version"),
     input: jsonb("input"),
     output: jsonb("output"),
     error: jsonb("error"),
@@ -136,5 +145,59 @@ export const workflowRunSteps = pgTable(
   (t) => ({
     runIdx: index("workflow_run_steps_run_idx").on(t.runId),
     stepIdx: index("workflow_run_steps_step_idx").on(t.stepId),
+  })
+);
+
+// Version history tables
+export const workflowVersions = pgTable(
+  "workflow_versions",
+  {
+    id: text("id").primaryKey(),
+    workflowId: text("workflow_id").notNull(),
+    version: integer("version").notNull(),
+    // Snapshot of workflow state at this version
+    name: varchar("name", { length: 200 }).notNull(),
+    description: text("description"),
+    definition: jsonb("definition").notNull(),
+    inputSchema: jsonb("input_schema"),
+    outputSchema: jsonb("output_schema"),
+    envVars: jsonb("env_vars"),
+    executionEnv: varchar("execution_env", { length: 10 }).default("db").notNull(),
+    // Version metadata
+    changeMessage: text("change_message"),
+    changedBy: varchar("changed_by", { length: 160 }).notNull(),
+    changeType: varchar("change_type", { length: 20 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    workflowIdx: index("workflow_versions_workflow_idx").on(t.workflowId),
+    versionIdx: index("workflow_versions_version_idx").on(t.workflowId, t.version),
+  })
+);
+
+export const toolVersions = pgTable(
+  "tool_versions",
+  {
+    id: text("id").primaryKey(),
+    toolId: text("tool_id").notNull(),
+    version: integer("version").notNull(),
+    // Snapshot of tool state at this version
+    name: varchar("name", { length: 160 }).notNull(),
+    description: text("description"),
+    type: varchar("type", { length: 20 }).notNull(),
+    inputSchema: jsonb("input_schema").notNull(),
+    outputSchema: jsonb("output_schema"),
+    implementation: text("implementation"),
+    lambdaArn: text("lambda_arn"),
+    executionEnv: varchar("execution_env", { length: 10 }).default("db").notNull(),
+    // Version metadata
+    changeMessage: text("change_message"),
+    changedBy: varchar("changed_by", { length: 160 }).notNull(),
+    changeType: varchar("change_type", { length: 20 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    toolIdx: index("tool_versions_tool_idx").on(t.toolId),
+    versionIdx: index("tool_versions_version_idx").on(t.toolId, t.version),
   })
 );
