@@ -68,22 +68,10 @@ export function MainNav() {
             </div>
           </div>
 
-          {/* 
+          {/* Right Side */}
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5 text-muted-foreground" />
-              <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-destructive rounded-full text-[10px] text-destructive-foreground flex items-center justify-center">
-                3
-              </span>
-            </Button>
-            <Link href="/links">
-              <Button variant="default">
-                Dashboard
-              </Button>
-            </Link>
             <UserButton />
           </div>
-          Right Side */}
         </div>
       </div>
     </nav>
