@@ -60,6 +60,10 @@ export default function ToolsPage() {
     setRunModalOpen(true);
   };
 
+  const handleEditTool = (tool: Tool) => {
+    router.push(`/tools/${tool.id}/edit`);
+  };
+
   const handleViewHistory = (tool: Tool) => {
     setSelectedTool(tool);
     setVersionModalOpen(true);
@@ -158,6 +162,7 @@ export default function ToolsPage() {
             tools={tools}
             loading={fetchingTools}
             onRun={handleRunTool}
+            onEdit={handleEditTool}
             onDelete={handleDeleteTool}
             onViewHistory={handleViewHistory}
           />

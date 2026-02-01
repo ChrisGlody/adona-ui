@@ -894,6 +894,14 @@ export async function createToolVersion({
   return id;
 }
 
+// Get a single tool by ID
+export async function getTool(id: string, owner: string) {
+  return db
+    .select()
+    .from(tools)
+    .where(and(eq(tools.id, id), eq(tools.owner, owner)));
+}
+
 // Get all versions for a tool
 export async function getToolVersions(toolId: string, owner: string) {
   const tool = await db
