@@ -6,17 +6,9 @@
 import "sst"
 declare module "sst" {
   export interface Resource {
-    "Adona": {
+    "AdonaUI": {
       "type": "sst.aws.Nextjs"
       "url": string
-    }
-    "ToolRunner": {
-      "name": string
-      "type": "sst.aws.Function"
-    }
-    "ToolsBucket": {
-      "name": string
-      "type": "sst.aws.Bucket"
     }
     "UserPool": {
       "id": string
@@ -26,14 +18,6 @@ declare module "sst" {
       "id": string
       "secret": string
       "type": "sst.aws.CognitoUserPoolClient"
-    }
-    "WorkflowOrchestrator": {
-      "name": string
-      "type": "sst.aws.Function"
-    }
-    "WorkflowStepRunner": {
-      "name": string
-      "type": "sst.aws.Function"
     }
   }
 }

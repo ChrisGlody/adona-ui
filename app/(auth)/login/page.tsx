@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { signIn, fetchAuthSession } from "aws-amplify/auth";
@@ -19,7 +19,7 @@ import { isCognitoConfigured } from "@/lib/cognito-config";
 
 const MOCK_AUTH_TOKEN = "mock-auth-token";
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -153,5 +153,13 @@ export default function LoginPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-md px-4 text-center">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
