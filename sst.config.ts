@@ -26,8 +26,8 @@ export default $config({
       path: ".",
       link: [userPool, webClient],
       environment: {
-        NEXT_PUBLIC_USER_POOL_ID: process.env.NEXT_PUBLIC_USER_POOL_ID!,
-        NEXT_PUBLIC_USER_POOL_CLIENT_ID: process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID!,
+        NEXT_PUBLIC_USER_POOL_ID: userPool.id,
+        NEXT_PUBLIC_USER_POOL_CLIENT_ID: webClient.id,
         NEXT_PUBLIC_AWS_REGION: $app.providers?.aws.region,
         DATABASE_URL: process.env.DATABASE_URL!,
         OPENAI_API_KEY: process.env.OPENAI_API_KEY!,
