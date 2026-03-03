@@ -25,6 +25,11 @@ export default $config({
     const site = new sst.aws.Nextjs("AdonaUI", {
       path: ".",
       link: [userPool, webClient],
+      domain: {
+        name: "www.omicsflow.io",
+        dns: false,
+        cert: "arn:aws:acm:us-east-1:292139251368:certificate/66d10c22-1477-4db4-8f1c-41868a46dcf1",
+      },
       environment: {
         NEXT_PUBLIC_USER_POOL_ID: userPool.id,
         NEXT_PUBLIC_USER_POOL_CLIENT_ID: webClient.id,
