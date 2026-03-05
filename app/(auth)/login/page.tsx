@@ -74,7 +74,7 @@ function LoginForm() {
           <div className="mx-auto mb-4 flex justify-center">
             <Image
               src="/adona-logo.png"
-              alt="Adona AI"
+              alt="OmicsFlow"
               width={160}
               height={48}
               className="h-14 w-auto object-contain"
@@ -85,7 +85,7 @@ function LoginForm() {
             Welcome back
           </CardTitle>
           <CardDescription className="text-muted-foreground">
-            Sign in to continue to Adona AI.
+            Sign in to continue to OmicsFlow.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 pt-4">

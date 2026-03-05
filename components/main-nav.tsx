@@ -37,7 +37,7 @@ export function MainNav() {
             <Link href="/" className="flex items-center gap-2">
               <Image
                 src="/adona-logo.png"
-                alt="Adona AI"
+                alt="OmicsFlow"
                 width={120}
                 height={36}
                 className="h-9 w-auto object-contain"

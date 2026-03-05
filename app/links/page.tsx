@@ -70,7 +70,7 @@ export default function LinksPage() {
       <MainNav />
       <div className="p-6 space-y-6 max-w-6xl mx-auto flex-1">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">Welcome to Adona</h1>
+          <h1 className="text-3xl font-bold text-foreground">Welcome to OmicsFlow</h1>
           <p className="text-muted-foreground">
             Signed in as <span className="font-medium">{username}</span>
           </p>

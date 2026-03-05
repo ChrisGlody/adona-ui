@@ -69,7 +69,7 @@ export default function RegisterPage() {
           <div className="mx-auto mb-4 flex justify-center">
             <Image
               src="/adona-logo.png"
-              alt="Adona AI"
+              alt="OmicsFlow"
               width={160}
               height={48}
               className="h-14 w-auto object-contain"
